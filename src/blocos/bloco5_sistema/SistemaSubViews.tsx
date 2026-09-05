@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Network,
@@ -33,8 +33,7 @@ import { openPrintDocumentWindow } from "../../lib/printUtils";
 import { formatRelativeTime } from "../bloco5_sistema/systemUtils";
 import { safeJSONStringify } from "../../lib/utils";
 import blueprint from "../../../firebase-blueprint.json";
-import MonografiaView from "../bloco3_unidades_organicas/MonografiaView";
-import SystemRegistrationForm from "../bloco5_sistema/SystemRegistrationForm";
+const MonografiaView = lazy(() => import("../bloco3_unidades_organicas/MonografiaView"));
 import { getUnifiedProducts, saveUnifiedProduct, deleteUnifiedProduct } from "../../lib/unifiedManager";
 import { RUBRICAS, getNecessidadesOptions, formatNecessidadeWithCode, PRODUTOS_POR_NECESSIDADE } from "../../constants/formOptions";
 

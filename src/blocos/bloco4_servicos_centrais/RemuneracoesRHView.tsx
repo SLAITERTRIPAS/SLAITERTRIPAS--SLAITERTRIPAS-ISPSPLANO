@@ -33,19 +33,19 @@ interface RemuneracoesRHViewProps {
   onBack?: () => void;
 }
 
-// Tabela Salarial de Referência (Angola - Função Pública / Ensino Superior)
+// Tabela Salarial de Referência (Função Pública / Ensino Superior)
 const TABELA_SALARIAL_REF = [
-  { categoria: "Professor Titular", tipo: "Docente", nivel: "E-1", baseKz: 980000, subsidioKz: 245000 },
-  { categoria: "Professor Associado", tipo: "Docente", nivel: "E-2", baseKz: 850000, subsidioKz: 212500 },
-  { categoria: "Professor Auxiliar", tipo: "Docente", nivel: "E-3", baseKz: 720000, subsidioKz: 180000 },
-  { categoria: "Assistente", tipo: "Docente", nivel: "E-4", baseKz: 580000, subsidioKz: 145000 },
-  { categoria: "Assistente Estagiário", tipo: "Docente", nivel: "E-5", baseKz: 460000, subsidioKz: 115000 },
-  { categoria: "Técnico Superior Principal", tipo: "CTA", nivel: "T-1", baseKz: 520000, subsidioKz: 104000 },
-  { categoria: "Técnico Superior 1ª Classe", tipo: "CTA", nivel: "T-2", baseKz: 430000, subsidioKz: 86000 },
-  { categoria: "Técnico Superior 2ª Classe", tipo: "CTA", nivel: "T-3", baseKz: 350000, subsidioKz: 70000 },
-  { categoria: "Técnico Médio 1ª Classe", tipo: "CTA", nivel: "M-1", baseKz: 260000, subsidioKz: 52000 },
-  { categoria: "Técnico Médio 2ª Classe", tipo: "CTA", nivel: "M-2", baseKz: 210000, subsidioKz: 42000 },
-  { categoria: "Auxiliar Administrativo / Operário", tipo: "CTA", nivel: "O-1", baseKz: 150000, subsidioKz: 30000 },
+  { categoria: "Professor Titular", tipo: "Docente", nivel: "E-1", baseMZN: 980000, subsidioMZN: 245000 },
+  { categoria: "Professor Associado", tipo: "Docente", nivel: "E-2", baseMZN: 850000, subsidioMZN: 212500 },
+  { categoria: "Professor Auxiliar", tipo: "Docente", nivel: "E-3", baseMZN: 720000, subsidioMZN: 180000 },
+  { categoria: "Assistente", tipo: "Docente", nivel: "E-4", baseMZN: 580000, subsidioMZN: 145000 },
+  { categoria: "Assistente Estagiário", tipo: "Docente", nivel: "E-5", baseMZN: 460000, subsidioMZN: 115000 },
+  { categoria: "Técnico Superior Principal", tipo: "CTA", nivel: "T-1", baseMZN: 520000, subsidioMZN: 104000 },
+  { categoria: "Técnico Superior 1ª Classe", tipo: "CTA", nivel: "T-2", baseMZN: 430000, subsidioMZN: 86000 },
+  { categoria: "Técnico Superior 2ª Classe", tipo: "CTA", nivel: "T-3", baseMZN: 350000, subsidioMZN: 70000 },
+  { categoria: "Técnico Médio 1ª Classe", tipo: "CTA", nivel: "M-1", baseMZN: 260000, subsidioMZN: 52000 },
+  { categoria: "Técnico Médio 2ª Classe", tipo: "CTA", nivel: "M-2", baseMZN: 210000, subsidioMZN: 42000 },
+  { categoria: "Auxiliar Administrativo / Operário", tipo: "CTA", nivel: "O-1", baseMZN: 150000, subsidioMZN: 30000 },
 ];
 
 export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
@@ -87,11 +87,11 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
       c.categoria ? c.categoria.toLowerCase().includes(r.categoria.toLowerCase()) : false
     ) || (isDocente ? TABELA_SALARIAL_REF[3] : TABELA_SALARIAL_REF[7]);
 
-    const base = (c as any).vencimentoBase || ref.baseKz;
-    const subs = (c as any).subsidiosTotal || ref.subsidioKz;
+    const base = (c as any).vencimentoBase || ref.baseMZN;
+    const subs = (c as any).subsidiosTotal || ref.subsidioMZN;
     const inss = Math.round(base * 0.03); // 3% INSS
 
-    // Simplificado IRT Angola (~10-15% dependendo da faixa)
+    // IRPS / Impostos
     const matTributavel = Math.max(0, base + subs - inss - 35000);
     const irt = Math.round(matTributavel * 0.13);
     const liquido = Math.max(0, base + subs - inss - irt);
@@ -166,12 +166,12 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
   }, [filteredColabs]);
 
   // Format currency
-  const formatKz = (val: number) => {
-    return new Intl.NumberFormat("pt-AO", {
+  const formatMZN = (val: number) => {
+    return new Intl.NumberFormat("pt-MZ", {
       style: "currency",
-      currency: "AOA",
+      currency: "MZN",
       maximumFractionDigits: 0,
-    }).format(val).replace("AOA", "Kz");
+    }).format(val).replace("MZN", "MT");
   };
 
   // Simulator calculations
@@ -199,11 +199,11 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
         "Tipo": c.tipo || "CTA",
         "Categoria": info.categoria,
         "Vínculo": c.efetivo ? "Efetivo / Quadro" : "Contratado",
-        "Vencimento Base (Kz)": info.base,
-        "Subsídios (Kz)": info.subs,
-        "INSS 3% (Kz)": info.inss,
-        "IRT Estimado (Kz)": info.irt,
-        "Salário Líquido (Kz)": info.liquido,
+        "Vencimento Base (MZN)": info.base,
+        "Subsídios (MZN)": info.subs,
+        "INSS 3% (MZN)": info.inss,
+        "IRPS Estimado (MZN)": info.irt,
+        "Salário Líquido (MZN)": info.liquido,
         "Banco / NIB": c.banco ? `${c.banco} - ${c.nib || ""}` : "IBAN não registado",
       };
     });
@@ -451,7 +451,7 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
             <span className="text-[10px] font-black  text-slate-400 tracking-wider">
               Massa Salarial Bruta
             </span>
-            <div className="text-lg font-black text-slate-800">{formatKz(totals.totalBruto)}</div>
+            <div className="text-lg font-black text-slate-800">{formatMZN(totals.totalBruto)}</div>
             <span className="text-[11px] text-emerald-600 font-bold">Base + Subsídios</span>
           </div>
         </div>
@@ -462,10 +462,10 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
           </div>
           <div>
             <span className="text-[10px] font-black  text-slate-400 tracking-wider">
-              Retenções Legais (INSS + IRT)
+              Retenções Legais (INSS + IRPS)
             </span>
-            <div className="text-lg font-black text-slate-800">{formatKz(totals.totalInss + totals.totalIrt)}</div>
-            <span className="text-[11px] text-slate-500">INSS: {formatKz(totals.totalInss)}</span>
+            <div className="text-lg font-black text-slate-800">{formatMZN(totals.totalInss + totals.totalIrt)}</div>
+            <span className="text-[11px] text-slate-500">INSS: {formatMZN(totals.totalInss)}</span>
           </div>
         </div>
 
@@ -477,7 +477,7 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
             <span className="text-[10px] font-black  text-slate-400 tracking-wider">
               Total Salários Líquidos
             </span>
-            <div className="text-lg font-black text-slate-800">{formatKz(totals.totalLiquido)}</div>
+            <div className="text-lg font-black text-slate-800">{formatMZN(totals.totalLiquido)}</div>
             <span className="text-[11px] text-amber-600 font-bold">A Pagar aos Colaboradores</span>
           </div>
         </div>
@@ -577,19 +577,19 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-right font-semibold text-slate-700">
-                          {formatKz(salary.base)}
+                          {formatMZN(salary.base)}
                         </td>
                         <td className="py-3.5 px-4 text-right text-emerald-600 font-semibold">
-                          +{formatKz(salary.subs)}
+                          +{formatMZN(salary.subs)}
                         </td>
                         <td className="py-3.5 px-4 text-right text-rose-500 font-medium">
-                          -{formatKz(salary.inss)}
+                          -{formatMZN(salary.inss)}
                         </td>
                         <td className="py-3.5 px-4 text-right text-rose-500 font-medium">
-                          -{formatKz(salary.irt)}
+                          -{formatMZN(salary.irt)}
                         </td>
                         <td className="py-3.5 px-4 text-right font-black text-slate-900 bg-slate-50/50">
-                          {formatKz(salary.liquido)}
+                          {formatMZN(salary.liquido)}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
@@ -626,8 +626,8 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
                   <th className="py-3.5 px-4">Carreira / Categoria</th>
                   <th className="py-3.5 px-4">Grupo</th>
                   <th className="py-3.5 px-4">Escalão / Nível</th>
-                  <th className="py-3.5 px-4 text-right">Vencimento Base (Kz)</th>
-                  <th className="py-3.5 px-4 text-right">Subsídio Est. (Kz)</th>
+                  <th className="py-3.5 px-4 text-right">Vencimento Base (MZN)</th>
+                  <th className="py-3.5 px-4 text-right">Subsídio Est. (MZN)</th>
                   <th className="py-3.5 px-4 text-right">Total Estimado Bruto</th>
                 </tr>
               </thead>
@@ -645,10 +645,10 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
                       </span>
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-600 font-bold">{item.nivel}</td>
-                    <td className="py-3.5 px-4 text-right font-black text-slate-800">{formatKz(item.baseKz)}</td>
-                    <td className="py-3.5 px-4 text-right text-emerald-600 font-bold">{formatKz(item.subsidioKz)}</td>
+                    <td className="py-3.5 px-4 text-right font-black text-slate-800">{formatMZN(item.baseMZN)}</td>
+                    <td className="py-3.5 px-4 text-right text-emerald-600 font-bold">{formatMZN(item.subsidioMZN)}</td>
                     <td className="py-3.5 px-4 text-right font-black text-blue-900">
-                      {formatKz(item.baseKz + item.subsidioKz)}
+                      {formatMZN(item.baseMZN + item.subsidioMZN)}
                     </td>
                   </tr>
                 ))}
@@ -664,10 +664,10 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
           <div>
             <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
               <Calculator className="text-amber-500" size={24} />
-              Simulador de Vencimento e Retenção na Fonte (IRT/INSS)
+              Simulador de Vencimento e Retenção na Fonte (IRPS/INSS)
             </h3>
             <p className="text-xs text-slate-500 mt-1">
-              Calcule instantaneamente os impostos e o valor líquido a receber segundo a legislação tributária angolana.
+              Calcule instantaneamente os impostos e o valor líquido a receber segundo a legislação tributária.
             </p>
           </div>
 
@@ -676,7 +676,7 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
             <div className="bg-slate-50/80 p-6 rounded-2xl border border-slate-200 space-y-5">
               <div>
                 <label className="block text-xs font-black text-slate-700  tracking-wider mb-2">
-                  Vencimento Base (Kz)
+                  Vencimento Base (MZN)
                 </label>
                 <input
                   type="number"
@@ -688,7 +688,7 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
 
               <div>
                 <label className="block text-xs font-black text-slate-700  tracking-wider mb-2">
-                  Subsídios Diversos (Alimentação, Transporte) (Kz)
+                  Subsídios Diversos (Alimentação, Transporte) (MZN)
                 </label>
                 <input
                   type="number"
@@ -721,27 +721,27 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
 
                 <div className="flex justify-between items-center text-xs pb-2 border-b border-white/10">
                   <span className="text-slate-300">Vencimento Base:</span>
-                  <span className="font-bold">{formatKz(simCalc.base)}</span>
+                  <span className="font-bold">{formatMZN(simCalc.base)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs pb-2 border-b border-white/10">
                   <span className="text-slate-300">Total Subsídios:</span>
-                  <span className="font-bold text-emerald-400">+{formatKz(simCalc.subs + simCalc.isencao)}</span>
+                  <span className="font-bold text-emerald-400">+{formatMZN(simCalc.subs + simCalc.isencao)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs pb-2 border-b border-white/10">
                   <span className="text-slate-300">Salário Bruto Total:</span>
-                  <span className="font-black text-white">{formatKz(simCalc.bruto)}</span>
+                  <span className="font-black text-white">{formatMZN(simCalc.bruto)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs pb-2 border-b border-white/10">
                   <span className="text-slate-300">Desconto Segurança Social INSS (3%):</span>
-                  <span className="font-bold text-rose-400">-{formatKz(simCalc.inss)}</span>
+                  <span className="font-bold text-rose-400">-{formatMZN(simCalc.inss)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs pb-2 border-b border-white/10">
-                  <span className="text-slate-300">Imposto de Trabalho (IRT Est.):</span>
-                  <span className="font-bold text-rose-400">-{formatKz(simCalc.irt)}</span>
+                  <span className="text-slate-300">Imposto de Rendimento (IRPS Est.):</span>
+                  <span className="font-bold text-rose-400">-{formatMZN(simCalc.irt)}</span>
                 </div>
               </div>
 
@@ -749,7 +749,7 @@ export const RemuneracoesRHView: React.FC<RemuneracoesRHViewProps> = ({
                 <div className="text-xs  font-black text-amber-400 tracking-wider">
                   Salário Líquido Estimado a Receber
                 </div>
-                <div className="text-3xl font-black text-white mt-1">{formatKz(simCalc.liquido)}</div>
+                <div className="text-3xl font-black text-white mt-1">{formatMZN(simCalc.liquido)}</div>
               </div>
             </div>
           </div>

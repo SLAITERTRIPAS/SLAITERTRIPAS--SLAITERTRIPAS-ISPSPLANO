@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import {
   ArrowLeft,
   Maximize2,
@@ -11,9 +11,9 @@ import {
   BookOpen,
   LayoutGrid,
 } from "lucide-react";
-import LibraryVisitForm from "../bloco3_unidades_organicas/LibraryVisitForm";
-import BookRegistrationForm from "../bloco3_unidades_organicas/BookRegistrationForm";
-import ArchiveView from "../bloco5_sistema/ArchiveView";
+const LibraryVisitForm = lazy(() => import("../bloco3_unidades_organicas/LibraryVisitForm"));
+const BookRegistrationForm = lazy(() => import("../bloco3_unidades_organicas/BookRegistrationForm"));
+const ArchiveView = lazy(() => import("../bloco5_sistema/ArchiveView"));
 
 import { LibraryRegistration, BookRegistration } from "../../types";
 import { isSuperBossUser, isPatrimonioBossOrAdmin } from "../../lib/auth";
@@ -194,32 +194,38 @@ export default function SubMenu({
             : "Externo";
 
     return (
-      <LibraryVisitForm
-        onBack={() => setShowLibraryVisitForm(false)}
-        onSubmit={onLibrarySubmit}
-        bookRegistrations={bookRegistrations}
-        initialTipoVisitante={initialType}
-        user={user}
-      />
+      <Suspense fallback={<div className="p-8 text-center text-slate-500">A carregar...</div>}>
+        <LibraryVisitForm
+          onBack={() => setShowLibraryVisitForm(false)}
+          onSubmit={onLibrarySubmit}
+          bookRegistrations={bookRegistrations}
+          initialTipoVisitante={initialType}
+          user={user}
+        />
+      </Suspense>
     );
   }
 
   if (showBookRegistrationForm) {
     return (
-      <BookRegistrationForm
-        onBack={() => setShowBookRegistrationForm(false)}
-        onSubmit={onBookSubmit}
-      />
+      <Suspense fallback={<div className="p-8 text-center text-slate-500">A carregar...</div>}>
+        <BookRegistrationForm
+          onBack={() => setShowBookRegistrationForm(false)}
+          onSubmit={onBookSubmit}
+        />
+      </Suspense>
     );
   }
 
   if (showArchiveView) {
     return (
-      <ArchiveView
-        user={user}
-        onBack={() => setShowArchiveView(false)}
-        onShowAlert={onShowAlert}
-      />
+      <Suspense fallback={<div className="p-8 text-center text-slate-500">A carregar...</div>}>
+        <ArchiveView
+          user={user}
+          onBack={() => setShowArchiveView(false)}
+          onShowAlert={onShowAlert}
+        />
+      </Suspense>
     );
   }
 

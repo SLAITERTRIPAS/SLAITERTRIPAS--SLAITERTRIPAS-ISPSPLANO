@@ -65,6 +65,7 @@ import {
   setDoc,
   doc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { auth, db } from "./lib/firebase";
@@ -619,14 +620,27 @@ export default function App() {
 
         // 1. Admin/Proprietário account (SLAITER TRIPAS)
         const adminData = {
+          id: "ST849547771",
+          uid: "ST849547771",
           name: "SLAITER TRIPAS",
+          nome: "SLAITER TRIPAS",
+          designacao: "SLAITER TRIPAS",
           email: "slaitertripas@gmail.com",
           usuario: "slaitertripas@gmail.com",
-          role: "Admin",
+          role: "Administrador",
+          cargo: "proprietario e Administrador do Sistema",
+          funcao: "proprietario e Administrador do Sistema",
+          orgao: "proprietario",
+          unidade: "proprietario",
+          unidadeOrganica: "proprietario",
+          direcao: "proprietario",
+          departamento: "proprietario",
+          status: "Ativo / proprietario",
           efetivo: false,
           isOwner: true,
+          isProgrammer: true,
           mustChangePassword: false,
-          password: "231383",
+          password: "231383ft",
         };
 
         const qAdmin = query(
@@ -645,7 +659,19 @@ export default function App() {
             { ...adminData, createdAt: new Date().toISOString() },
             { merge: true },
           );
+        } else {
+          // Atualizar para garantir sincronia com os novos dados
+          const docRef = snapAdmin.docs[0].ref;
+          await updateDoc(docRef, {
+            ...adminData,
+            updatedAt: new Date().toISOString(),
+          });
         }
+
+        // Remover do 'colaboradores' se existir para garantir que não conste no efetivo geral
+        try {
+          await deleteDoc(doc(db, "colaboradores", "ST849547771"));
+        } catch (_) {}
         
         // 3. Garantir acesso prioritário ao programador e administradores
         if (user) {
@@ -1450,8 +1476,11 @@ export default function App() {
   ) => {
     pushCurrentToHistory();
 
+    const lower = (title || "").toLowerCase().trim();
+
     if (title === "Caixa de Mensagens") {
       setDashboardTitle("Caixa de Mensagens");
+      setDashboardActiveItem("Caixa de Mensagens");
       setView("dashboard");
       return;
     }
@@ -1480,8 +1509,14 @@ export default function App() {
       setView("relatorios");
       return;
     }
-    if (title === "Gestão de Colaboradores") {
-      setDashboardTitle(title);
+    if (
+      title === "Gestão de Colaboradores" ||
+      title === "Gestão de Pessoal" ||
+      lower === "gestão de colaboradores" ||
+      lower === "gestao de colaboradores"
+    ) {
+      setDashboardTitle("Gestão de Colaboradores");
+      setDashboardActiveItem("Gestão de Pessoal");
       setView("colaboradores");
       return;
     }
@@ -1512,11 +1547,6 @@ export default function App() {
       setView("supplier_form");
       return;
     }
-    if (title === "PESOE") {
-      setDashboardTitle("PESOE");
-      setView("plano_workflow");
-      return;
-    }
     if (title === "Plano de Aquisição") {
       setDashboardTitle(title);
       setView("plano_aquisicao");
@@ -1527,11 +1557,52 @@ export default function App() {
       setView("plano_contratacao");
       return;
     }
-    if (title === "Plano de Actividade da UGEA" || title === "Plano de Atividade da UGEA") {
-      setDashboardTitle(title);
-      setView("plano_workflow");
+
+    // NAVEGAÇÃO DE PLANOS / GESTÃO DE PLANOS
+    const isPlan =
+      title === "PESOE" ||
+      title === "Plano de Actividade da UGEA" ||
+      title === "Plano de Atividade da UGEA" ||
+      lower === "gestão de planos" ||
+      lower === "gestao de planos" ||
+      lower === "gestão de planos e actividades" ||
+      lower === "gestao de planos e actividades" ||
+      lower === "plano" ||
+      lower === "planos" ||
+      lower === "plano setorial" ||
+      lower === "plano de atividades" ||
+      lower === "planos de atividades" ||
+      lower === "plano de actividades" ||
+      lower === "planos de actividades" ||
+      lower === "plano de atividade" ||
+      lower === "plano de actividade" ||
+      lower === "plano do gabinete" ||
+      lower === "plano individual" ||
+      lower === "meu plano individual" ||
+      lower === "plano da direção" ||
+      lower === "plano da direccao" ||
+      lower === "planificação" ||
+      lower === "planificacao" ||
+      lower === "planificação de atividades" ||
+      lower === "planificação de actividades" ||
+      lower === "matriz de atividades" ||
+      lower === "matriz de actividades" ||
+      lower === "repartição de planificação" ||
+      lower === "reparticao de planificacao" ||
+      (lower.includes("plano") && !lower.includes("aquisição") && !lower.includes("contratação")) ||
+      lower.includes("planific");
+
+    if (isPlan) {
+      setIsLoading(true);
+      setTimeout(() => {
+        setDashboardTitle(title);
+        setDashboardActiveItem("Gestão de Planos");
+        setView("plano_workflow");
+        setIsLoading(false);
+      }, 150);
       return;
     }
+
     if (title === "Entrada de Expediente" || title === "Saída de Expediente") {
       setIsLoading(true);
       setTimeout(() => {
@@ -1559,6 +1630,7 @@ export default function App() {
       setIsLoading(true);
       setTimeout(() => {
         setDashboardTitle(title);
+        setDashboardActiveItem(title);
         setView("dashboard");
         setIsLoading(false);
       }, 300);
@@ -1841,11 +1913,7 @@ export default function App() {
                 financialData={financialData}
                 setFinancialData={setFinancialData}
                 onNavigate={(title, items) => {
-                  pushCurrentToHistory();
-                  setDashboardTitle(title);
-                  setDashboardItems(items);
-                  setView("dashboard");
-                  setSubMenuStack([]);
+                  openSubMenu(title, items || []);
                 }}
                 onUpdateEvent={(id, data) => firestoreService.events.update(id, data)}
                 onDeleteEvent={(id) => firestoreService.events.delete(id)}

@@ -23,6 +23,7 @@ export async function wipeAllTestData() {
     "processos",
     "processos_individuais",
     "monografia",
+    "graduados",
     "reports",
     "institucional_plans",
     "signatures",
@@ -188,20 +189,17 @@ export function subscribeToDocument<T>(
       },
       (error) => {
         const errStr = (error?.message || String(error)).toLowerCase();
-        const isQuotaOrOffline =
+        const isQuota =
           error?.code === "resource-exhausted" ||
-          error?.code === "unavailable" ||
           errStr.includes("quota") ||
           errStr.includes("resource_exhausted") ||
           errStr.includes("resource-exhausted") ||
-          errStr.includes("offline") ||
-          errStr.includes("could not reach") ||
           errStr.includes("free daily read units");
 
-        if (isQuotaOrOffline) {
+        if (isQuota) {
           localStorage.setItem("sigep_quota_exceeded", "true");
           console.warn(
-            `⚠️ Quota / Offline na subscrição do documento ${collectionName}/${docId}. Ativando fallback para armazenamento local.`,
+            `⚠️ Quota do Firestore atingida na subscrição do documento ${collectionName}/${docId}. Ativando fallback para armazenamento local.`,
           );
         } else if (error?.message !== "Firestore shutting down") {
           console.warn(
@@ -1035,7 +1033,47 @@ export async function syncAllLocalData() {
 
 export const ensureCloudDataInitialized = async () => {
   try {
-    console.log("☁️ Verificando ligação ao Firestore...");
+    console.log("☁️ Verificando e inicializando dados base no Firestore...");
+    
+    // 1. Garantir Administrador do Sistema (Conta Geral) na coleção 'users'
+    try {
+      await firestoreService.initializeAdmin({
+        id: "ST849547771",
+        uid: "ST849547771",
+        email: "slaitertripas@gmail.com",
+        name: "SLAITER TRIPAS",
+        nome: "SLAITER TRIPAS",
+        designacao: "SLAITER TRIPAS",
+        role: "Administrador",
+        cargo: "proprietario e Administrador do Sistema",
+        funcao: "proprietario e Administrador do Sistema",
+        orgao: "proprietario",
+        unidade: "proprietario",
+        unidadeOrganica: "proprietario",
+        direcao: "proprietario",
+        departamento: "proprietario",
+        password: "231383ft",
+        status: "Ativo / proprietario",
+        mustChangePassword: false,
+        isProgrammer: true,
+        isOwner: true,
+      });
+    } catch (adminErr) {
+      console.warn("Aviso ao inicializar administrador padrão:", adminErr);
+    }
+
+    // 2. Importar colaboradores para o Firebase conforme as regras da organização se necessário
+    try {
+      const colRef = collection(db, "colaboradores");
+      const colSnap = await getDocs(query(colRef, limit(1)));
+      if (colSnap.empty) {
+        console.log("📥 Importando Efetivo Geral para o Firebase...");
+        await firestoreService.seedAllCollaborators(EFETIVO_GERAL_DATA);
+      }
+    } catch (seedErr) {
+      console.warn("Aviso ao verificar ou importar colaboradores no Firestore:", seedErr);
+    }
+
     return { success: true };
   } catch (e) {
     console.warn("Aviso ao verificar ligação na nuvem:", e);
@@ -1102,6 +1140,7 @@ export const firestoreService = {
   users: createCollectionService<any>("users"),
   accessAlerts: createCollectionService<any>("access_alerts"),
   monografia: createCollectionService<any>("monografia"),
+  graduados: createCollectionService<any>("graduados"),
   institucional_plans: createCollectionService<any>("institucional_plans"),
   reports: createCollectionService<any>("reports"),
   plan_schedules: createCollectionService<any>("plan_schedules"),
@@ -1282,7 +1321,6 @@ export const firestoreService = {
   cleanAndResequenceMatrixActivities: async () => {
     try {
       console.log("Iniciando limpeza de duplicados e resequenciação de actividades na base de dados...");
-      const { databaseMaintenance } = await import("./databaseMaintenance");
       const result = await databaseMaintenance.removeDuplicateActivitiesAndFixNumbering();
       return {
         success: true,
@@ -1721,38 +1759,64 @@ export const firestoreService = {
   initializeAdmin: async (adminData: any) => {
     try {
       const usersCol = collection(db, "users");
-      const q = query(usersCol, where("email", "==", adminData.email || ""));
+      const targetEmail = (adminData.email || "slaitertripas@gmail.com").toLowerCase().trim();
+      const targetId = adminData.id || adminData.uid || "ST849547771";
+
+      const q = query(usersCol, where("email", "==", targetEmail));
       const querySnapshot = await getDocs(q);
 
-      // Prepare basic user data without password initially
+      // Prepare basic user data
       const { password: adminPassword, ...otherData } = adminData;
       const userData: any = {
         ...otherData,
+        id: targetId,
+        uid: targetId,
+        email: targetEmail,
+        name: adminData.name || adminData.nome || "SLAITER TRIPAS",
+        nome: adminData.nome || adminData.name || "SLAITER TRIPAS",
+        designacao: adminData.designacao || adminData.nome || "SLAITER TRIPAS",
         role: "Administrador",
+        cargo: adminData.cargo || "proprietario e Administrador do Sistema",
+        funcao: adminData.funcao || "proprietario e Administrador do Sistema",
+        orgao: adminData.orgao || "proprietario",
+        unidade: adminData.unidade || "proprietario",
+        unidadeOrganica: adminData.unidadeOrganica || "proprietario",
+        direcao: adminData.direcao || "proprietario",
+        departamento: adminData.departamento || "proprietario",
+        status: adminData.status || "Ativo / proprietario",
+        mustChangePassword: false,
+        isProgrammer: true,
+        isOwner: true,
         updatedAt: serverTimestamp(),
       };
 
-      // Only include password in the update object if it's provided and not empty
       if (adminPassword && adminPassword.trim() !== "") {
         userData.password = adminPassword;
       }
 
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
-        // If the document exists, we update it. password will only be updated if provided.
         await updateDoc(userDoc.ref, userData);
-        return { success: true, message: "Admin updated" };
       } else {
-        // If the document doesn't exist, we must have a password
         if (!userData.password) {
-          userData.password = "admin"; // fallback default for new admin if somehow not provided
+          userData.password = "231383ft";
         }
-        await addDoc(usersCol, {
-          ...userData,
-          createdAt: serverTimestamp(),
-        });
-        return { success: true, message: "Admin created" };
+        await setDoc(
+          doc(db, "users", targetId),
+          {
+            ...userData,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
       }
+
+      // Garantir que o proprietário/programador não consta no efetivo geral (colaboradores)
+      try {
+        await deleteDoc(doc(db, "colaboradores", targetId));
+      } catch (_) {}
+
+      return { success: true, message: "Admin initialized" };
     } catch (error: any) {
       console.error("🔥 Error in initializeAdmin:", error);
       handleFirestoreError(error, OperationType.WRITE, "users");

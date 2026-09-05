@@ -442,16 +442,6 @@ export default function MainHeader({
                     e.stopPropagation();
                     onBack();
                   }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onBack();
-                  }}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onBack();
-                  }}
                   className="bg-transparent hover:bg-[#FFB800]/10 border-2 border-[#FFB800] text-[#FFB800] active:scale-95 px-3.5 py-1 rounded-full flex items-center gap-2 font-black shadow-lg transition-all cursor-pointer relative z-10 select-none"
                   title="Voltar"
                 >

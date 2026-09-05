@@ -37,6 +37,7 @@ import {
   getStoredBackupData,
   downloadStoredBackupFile,
   deleteStoredBackup,
+  purgeAllPreviousVersions,
   collectAllBackupData,
   SYSTEM_ORGAOS,
   SystemBackupRecord,
@@ -424,6 +425,41 @@ export default function BackupRestoreModal({
     }
   };
 
+  const handlePurgeAllPreviousVersions = async () => {
+    if (
+      !window.confirm(
+        "ATENÇÃO: Deseja EXCLUIR permanentemente TODAS as versões anteriores e cópias de segurança guardadas no sistema?\n\nEsta ação removerá todos os backups da nuvem (Firestore) e caches de versões antigas do LocalStorage. Apenas os dados atuais ativos na base de dados serão preservados. Esta operação é irreversível!"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setProgressPercent(20);
+      setStatusMessage("A eliminar todas as versões anteriores e backups obsoletos...");
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const res = await purgeAllPreviousVersions();
+      setProgressPercent(100);
+
+      if (res.success) {
+        setSuccessMessage(res.message);
+        setStoredBackups([]);
+        await loadStoredBackups();
+      } else {
+        setErrorMessage("Falha ao eliminar as versões anteriores.");
+      }
+    } catch (err: any) {
+      console.error("Erro ao eliminar versões anteriores:", err);
+      setErrorMessage("Erro: " + (err?.message || err));
+    } finally {
+      setLoading(false);
+      setProgressPercent(0);
+    }
+  };
+
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -756,24 +792,35 @@ export default function BackupRestoreModal({
 
           {activeTab === "historico" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h4 className="font-black text-[#121c60] text-sm flex items-center gap-2">
                     <HardDrive size={18} className="text-[#FFB800]" />
                     <span>Cópia de Segurança Guardada na Nuvem / Sistema</span>
                   </h4>
                   <p className="text-xs text-gray-500">
-                    O Administrador pode descarregar ou restaurar qualquer backup automático salvo
+                    O Administrador pode descarregar, restaurar ou limpar backups guardados
                   </p>
                 </div>
-                <button
-                  onClick={handleRunAutoBackupNow}
-                  disabled={loading}
-                  className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
-                >
-                  <Play size={14} />
-                  <span>Novo Backup Automático</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={handlePurgeAllPreviousVersions}
+                    disabled={loading}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                    title="Excluir permanentemente todas as versões anteriores e backups passados"
+                  >
+                    <Trash2 size={14} />
+                    <span>Excluir Todas as Versões</span>
+                  </button>
+                  <button
+                    onClick={handleRunAutoBackupNow}
+                    disabled={loading}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    <Play size={14} />
+                    <span>Novo Backup Automático</span>
+                  </button>
+                </div>
               </div>
 
               {storedBackups.length === 0 ? (

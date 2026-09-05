@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Supplier } from "../../types";
 import { firestoreService } from "../../lib/firestoreService";
-import UGEA_SupplierRegistrationForm from "./UGEA_SupplierRegistrationForm";
+const UGEA_SupplierRegistrationForm = lazy(() => import("./UGEA_SupplierRegistrationForm"));
 
 interface SupplierManagementViewProps {
   onBack: () => void;

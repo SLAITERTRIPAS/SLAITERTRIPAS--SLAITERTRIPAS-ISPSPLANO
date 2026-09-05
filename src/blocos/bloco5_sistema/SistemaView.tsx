@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import { getCircularReplacer, safeJSONStringify } from "../../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -38,13 +38,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { IntelligentDiagnosticsView } from "./IntelligentDiagnosticsView";
-import CalendarView from "../bloco5_sistema/CalendarView";
+const CalendarView = lazy(() => import("../bloco5_sistema/CalendarView"));
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import * as XLSX from "xlsx";
-import MonografiaView from "../bloco3_unidades_organicas/MonografiaView";
-import ReportsView from "../bloco7_relatorios/ReportsView";
-import SystemRegistrationForm from "../bloco5_sistema/SystemRegistrationForm";
+const MonografiaView = lazy(() => import("../bloco3_unidades_organicas/MonografiaView"));
+const ReportsView = lazy(() => import("../bloco7_relatorios/ReportsView"));
 import UniversalRegistrationPicker from "./UniversalRegistrationPicker";
 import RegistarGraduadoForm from "../bloco8_gerais/RegistarGraduadoForm";
 import RegistarMateriaisBensForm from "../bloco8_gerais/RegistarMateriaisBensForm";
@@ -60,7 +59,7 @@ import { isSuperBossUser } from "../../lib/auth";
 import { checkIsSystemAdmin } from "../../lib/utils";
 import { ProcessingCircle } from "../../components/ui/ProcessingCircle";
 import { FUNCIONARIOS } from "../../constants/formOptions";
-import GestaoProdutosPrecosView from "../bloco9_produtos_precos/GestaoProdutosPrecosView";
+const GestaoProdutosPrecosView = lazy(() => import("../bloco9_produtos_precos/GestaoProdutosPrecosView"));
 import {
   DatabaseView,
   UserManagementView,
@@ -909,12 +908,65 @@ export default function SistemaView({
         if (registrationFormType === "user") {
           return (
             <div className="max-w-5xl mx-auto pt-8">
-              <SystemRegistrationForm
-                currentUser={user}
+              <RegistarFuncionarioForm
+                user={user}
                 onCancel={() => setRegistrationFormType(null)}
-                onSubmit={() => {
-                  setRegistrationFormType(null);
-                  setActiveItem("Gestão de Utilizadores");
+                onSubmit={async (finalData) => {
+                  try {
+                    // 1. Gravar/Atualizar dados do Colaborador
+                    await firestoreService.colaboradores.update(finalData.id, finalData);
+
+                    // 2. Registar o processo
+                    const formatProcessNumber = (num: number, year: string) => {
+                      return `PR-${year}-${num.toString().padStart(3, "0")}`;
+                    };
+                    const processNo = formatProcessNumber(
+                      Math.floor(Math.random() * 899) + 100,
+                      new Date().getFullYear().toString()
+                    );
+                    await firestoreService.processos.add({
+                      colaboradorId: finalData.id,
+                      colaboradorNome: finalData.nome,
+                      nuit: finalData.nuit,
+                      status: "Concluído",
+                      tipo: "Registo Inicial",
+                      dataSubmissao: new Date().toISOString().split("T")[0],
+                      processoNo: processNo,
+                    });
+
+                    // 3. Sincronizar chefias se aplicável
+                    await firestoreService.syncChefiaAccounts([finalData]);
+
+                    // 4. Criar conta de utilizador se tiver email
+                    if (finalData.email) {
+                      const userMail = finalData.email.toLowerCase().trim();
+                      const defaultUserData = {
+                        id: finalData.id,
+                        name: finalData.nome,
+                        email: userMail,
+                        role: "User",
+                        isOwner: false,
+                        nuit: finalData.nuit || "",
+                        bi: finalData.numeroBI || "",
+                        password: "123456",
+                        mustChangePassword: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                      };
+                      await firestoreService.users.set(finalData.id, defaultUserData);
+                    }
+
+                    if (onShowAlert) {
+                      onShowAlert("Colaborador registado com sucesso!", "success");
+                    } else {
+                      alert("Colaborador registado com sucesso!");
+                    }
+                    setRegistrationFormType(null);
+                    setActiveItem("Gestão de Utilizadores");
+                  } catch (err: any) {
+                    console.error("Erro no registo de colaborador:", err);
+                    alert("Erro ao gravar registo de colaborador: " + (err?.message || String(err)));
+                  }
                 }}
               />
             </div>
@@ -925,9 +977,18 @@ export default function SistemaView({
             <div className="max-w-5xl mx-auto pt-8">
               <RegistarGraduadoForm
                 onCancel={() => setRegistrationFormType(null)}
-                onSubmit={() => {
-                  setRegistrationFormType(null);
-                  onShowAlert("Graduado registado com sucesso!");
+                onSubmit={async (data) => {
+                  try {
+                    await firestoreService.graduados.add({
+                      ...data,
+                      createdAt: new Date().toISOString(),
+                    });
+                    setRegistrationFormType(null);
+                    onShowAlert("Graduado registado com sucesso!");
+                  } catch (err: any) {
+                    console.error("Erro ao registar graduado:", err);
+                    onShowAlert("Erro ao registar graduado no Firebase.");
+                  }
                 }}
               />
             </div>
@@ -938,9 +999,18 @@ export default function SistemaView({
             <div className="max-w-5xl mx-auto pt-8">
               <RegistarMateriaisBensForm
                 onCancel={() => setRegistrationFormType(null)}
-                onSubmit={() => {
-                  setRegistrationFormType(null);
-                  onShowAlert("Material/Bem registado com sucesso!");
+                onSubmit={async (data) => {
+                  try {
+                    await firestoreService.materiais_bens.add({
+                      ...data,
+                      createdAt: new Date().toISOString(),
+                    });
+                    setRegistrationFormType(null);
+                    onShowAlert("Material/Bem registado com sucesso!");
+                  } catch (err: any) {
+                    console.error("Erro ao registar material:", err);
+                    onShowAlert("Erro ao registar material no Firebase.");
+                  }
                 }}
                 user={user}
                 local={user?.unidadeOrganica || "ISPS"}
@@ -953,9 +1023,18 @@ export default function SistemaView({
             <div className="max-w-5xl mx-auto pt-8">
               <RegistarEspacoFisicoForm
                 onCancel={() => setRegistrationFormType(null)}
-                onSubmit={() => {
-                  setRegistrationFormType(null);
-                  onShowAlert("Espaço físico registado com sucesso!");
+                onSubmit={async (data) => {
+                  try {
+                    await firestoreService.espacos_fisicos.add({
+                      ...data,
+                      createdAt: new Date().toISOString(),
+                    });
+                    setRegistrationFormType(null);
+                    onShowAlert("Espaço físico registado com sucesso!");
+                  } catch (err: any) {
+                    console.error("Erro ao registar espaço físico:", err);
+                    onShowAlert("Erro ao registar espaço físico no Firebase.");
+                  }
                 }}
               />
             </div>
@@ -966,9 +1045,18 @@ export default function SistemaView({
             <div className="max-w-5xl mx-auto pt-8">
               <RegistarEfetivoEscolarForm
                 onCancel={() => setRegistrationFormType(null)}
-                onSubmit={() => {
-                  setRegistrationFormType(null);
-                  onShowAlert("Efetivo escolar registado com sucesso!");
+                onSubmit={async (data) => {
+                  try {
+                    await firestoreService.efetivo_escolar.add({
+                      ...data,
+                      createdAt: new Date().toISOString(),
+                    });
+                    setRegistrationFormType(null);
+                    onShowAlert("Efetivo escolar registado com sucesso!");
+                  } catch (err: any) {
+                    console.error("Erro ao registar efetivo escolar:", err);
+                    onShowAlert("Erro ao registar efetivo escolar no Firebase.");
+                  }
                 }}
               />
             </div>
@@ -1036,14 +1124,25 @@ export default function SistemaView({
                 <button
                   onClick={async () => {
                     const result = await firestoreService.initializeAdmin({
-                      name: ownerName || "SLAITER TRIPAS",
-                      email: itEmail || "fttripas@gmail.com",
-                      nuit: user?.nuit || "108164611",
-                      password: adminPassword || "231383",
-                      whatsapp: itWhatsapp || "+258 84 9547771",
-                      linkedin: itLinkedin || "linkedin.com/in/fttripas",
-                      facebook: itFacebook || "facebook.com/fttripas",
-                      website: itWeb || "www.fttipas.com",
+                      id: "ST849547771",
+                      uid: "ST849547771",
+                      name: "SLAITER TRIPAS",
+                      nome: "SLAITER TRIPAS",
+                      designacao: "SLAITER TRIPAS",
+                      email: "slaitertripas@gmail.com",
+                      role: "Administrador",
+                      cargo: "proprietario e Administrador do Sistema",
+                      funcao: "proprietario e Administrador do Sistema",
+                      orgao: "proprietario",
+                      unidade: "proprietario",
+                      unidadeOrganica: "proprietario",
+                      direcao: "proprietario",
+                      departamento: "proprietario",
+                      status: "Ativo / proprietario",
+                      password: adminPassword || "231383ft",
+                      mustChangePassword: false,
+                      isProgrammer: true,
+                      isOwner: true,
                     });
                     alert(
                       result.success
@@ -1934,7 +2033,9 @@ export default function SistemaView({
           <div
             className={`h-full w-full mx-auto flex flex-col min-h-0 ${["Centro de Mensagens", "Caixa de Mensagens"].includes(activeItem) ? "max-w-full overflow-hidden" : "max-w-7xl scrollbar overflow-y-auto"}`}
           >
-            {renderContent()}
+            <Suspense fallback={<div className="p-8 text-center text-slate-500">A carregar...</div>}>
+          {renderContent()}
+        </Suspense>
           </div>
         </main>
         {isMenuOpen && (

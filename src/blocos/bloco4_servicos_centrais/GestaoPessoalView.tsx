@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { lazy, Suspense, useState, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 
 const normalizeHeaderString = (str: string): string => {
@@ -91,19 +91,19 @@ import IndividualProcessForm from "../bloco8_gerais/IndividualProcessForm";
 import ProcessManagementView from "../bloco4_servicos_centrais/ProcessManagementView";
 import AfetacaoView from "../bloco4_servicos_centrais/AfetacaoView";
 import RegistarFuncionarioForm from "../bloco8_gerais/RegistarFuncionarioForm";
-import ReportsView from "../bloco7_relatorios/ReportsView";
-import DocumentosView from "../bloco6_documentos/DocumentosView";
-import GestaoDocumentosView from "../bloco4_servicos_centrais/GestaoDocumentosView";
-import CalendarView from "../bloco5_sistema/CalendarView";
-import AssinaturaDigitalView from "../bloco5_sistema/AssinaturaDigitalView";
+const ReportsView = lazy(() => import("../bloco7_relatorios/ReportsView"));
+const DocumentosView = lazy(() => import("../bloco6_documentos/DocumentosView"));
+const GestaoDocumentosView = lazy(() => import("../bloco4_servicos_centrais/GestaoDocumentosView"));
+const CalendarView = lazy(() => import("../bloco5_sistema/CalendarView"));
+const AssinaturaDigitalView = lazy(() => import("../bloco5_sistema/AssinaturaDigitalView"));
 import VisaoGeralLayout from "../bloco8_gerais/VisaoGeralLayout";
 import VisaoGeralCards from "../../components/VisaoGeralCards";
 import RemuneracoesRHView from "./RemuneracoesRHView";
-import MatrixView from "../bloco5_sistema/MatrixView";
-import PlanoWorkflowView from "../bloco5_sistema/PlanoWorkflowView";
+const MatrixView = lazy(() => import("../bloco5_sistema/MatrixView"));
+const PlanoWorkflowView = lazy(() => import("../bloco5_sistema/PlanoWorkflowView"));
 import CaixaMensagensView from "../bloco5_sistema/CaixaMensagensView";
-import RHStatView from "../bloco7_relatorios/RHStatisticsWorkflowView";
-import AcaoOrcamentalView from "../../components/AcaoOrcamentalView";
+const RHStatView = lazy(() => import("../bloco7_relatorios/RHStatisticsWorkflowView"));
+const AcaoOrcamentalView = lazy(() => import("../../components/AcaoOrcamentalView"));
 import { firestoreService } from "../../lib/firestoreService";
 import {
   generateCollaboratorId,
@@ -7310,7 +7310,7 @@ export default function GestaoPessoalView({
   };
 
   return (
-    <div className="h-full w-full bg-slate-50/30 flex flex-col font-sans overflow-hidden">
+    <div className="h-full w-full bg-gray-50 flex flex-col font-sans overflow-hidden">
       <div className="flex-grow flex flex-col md:flex-row overflow-hidden p-2 md:p-4 gap-2 md:gap-4 h-full">
         {!hideSidebar && (
           <aside
@@ -7421,7 +7421,9 @@ export default function GestaoPessoalView({
         <main
           className={`flex-grow h-full overflow-hidden bg-white ${!hideSidebar ? "rounded-[2rem] shadow-[0_10px_40px_rgb(0,0,0,0.04)] border border-slate-100" : ""} relative`}
         >
-          <div className="h-full overflow-y-auto">{renderContent()}</div>
+          <div className="h-full overflow-y-auto"><Suspense fallback={<div className="p-8 text-center text-slate-500">A carregar...</div>}>
+          {renderContent()}
+        </Suspense></div>
         </main>
 
         {/* Confirmation Modal overlay to fix iframe blocking */}

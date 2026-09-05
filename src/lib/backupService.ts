@@ -1261,49 +1261,8 @@ export async function runAutomaticBackupIfNeeded(): Promise<SystemBackupRecord |
 }
 
 export async function autoRestoreOnStartup(onProgress?: (msg: string) => void): Promise<boolean> {
-  try {
-    const localUser = localStorage.getItem("sigep_logged_in_user") || localStorage.getItem("sigep_user");
-    const localMatrix = localStorage.getItem("sigep_local_matrix_activities") || localStorage.getItem("sigep_matrix_activities");
-    if (localUser || localMatrix) {
-      return true;
-    }
-
-    // Check if Firestore database already contains users or matrix activities
-    const existingUsers = await firestoreService.users.get().catch(() => []);
-    const existingActivities = await firestoreService.matrixActivities.get().catch(() => []);
-    if ((existingUsers && existingUsers.length > 0) || (existingActivities && existingActivities.length > 0)) {
-      console.log("Base de dados com dados já armazenados. Preservando estado atual do Firestore sem sobravancar.");
-      return true;
-    }
-
-    console.log("Base de dados vazia detetada. A verificar e carregar o último backup para restaurar informações...");
-    
-    // 1. Tentar encontrar o backup mais recente a partir da lista de backups (Firestore + LocalStorage)
-    const backupsList = await getStoredBackupsList();
-    if (backupsList && backupsList.length > 0) {
-      const latestRecord = backupsList[0];
-      console.log(`Último backup encontrado: ${latestRecord.id} (${latestRecord.formattedDate}). A restaurar dados...`);
-      
-      const fullData = await getStoredBackupData(latestRecord);
-      if (fullData && Object.keys(fullData).length > 0) {
-        await restoreFullBackup(fullData, onProgress);
-        console.log("Último backup restaurado com sucesso no arranque do sistema!");
-        return true;
-      }
-    }
-
-    // 2. Tentar pelo cache de último backup no localStorage se a lista do Firestore não retornou dados
-    const latestBackupStr = localStorage.getItem("sigep_backup_latest");
-    if (latestBackupStr) {
-      console.log("A restaurar a partir do cache local do último backup...");
-      const parsed = JSON.parse(latestBackupStr);
-      await restoreFullBackup(parsed, onProgress);
-      return true;
-    }
-  } catch (e) {
-    console.warn("Aviso ao executar restauração automática no arranque:", e);
-  }
-  return false;
+  console.log("Sistema configurado para utilizar exclusivamente a versão atual e dados em tempo real da base de dados ativa.");
+  return true;
 }
 
 /**
@@ -1495,6 +1454,58 @@ export async function deleteStoredBackup(backupId: string): Promise<boolean> {
   } catch (_) {}
 
   return success;
+}
+
+/**
+ * Exclui permanentemente TODAS as versões anteriores e registos de backup guardados no sistema (Firestore + LocalStorage),
+ * assegurando que apenas a versão ativa atual e os dados vivos em tempo real sejam preservados.
+ */
+export async function purgeAllPreviousVersions(): Promise<{ success: boolean; deletedCount: number; message: string }> {
+  let deletedCount = 0;
+  if (db) {
+    try {
+      const snapshot = await getDocs(collection(db, "system_backups"));
+      for (const d of snapshot.docs) {
+        try {
+          const subSnapshot = await getDocs(collection(db, "system_backups", d.id, "collections"));
+          for (const subDoc of subSnapshot.docs) {
+            await deleteDoc(subDoc.ref);
+          }
+        } catch (_) {}
+        await deleteDoc(doc(db, "system_backups", d.id));
+        deletedCount++;
+      }
+    } catch (e) {
+      console.warn("Aviso ao limpar versões anteriores no Firestore:", e);
+    }
+  }
+
+  // Limpar todas as chaves de backups locais e caches obsoletos no LocalStorage
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith("sigep_backup_") ||
+          key.startsWith("sigep_auto_backup_") ||
+          key === "sigep_backup_latest" ||
+          key === "sigep_users_cache" ||
+          key === "sigep_matrix_activities_login_cache" ||
+          key === "sigep_last_auto_backup_time" ||
+          key.startsWith("sigep_draft_"))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch (_) {}
+
+  return {
+    success: true,
+    deletedCount,
+    message: `Sucesso: ${deletedCount} versão(ões) anterior(es) e registos de cópias de segurança passadas foram eliminados permanentemente. Apenas a versão atual da base de dados ativa foi mantida.`,
+  };
 }
 
 /**

@@ -43,7 +43,7 @@ const DocumentosView = lazy(() => lazyRetry(() => import("../blocos/bloco6_docum
 const ReportsView = lazy(() => lazyRetry(() => import("../blocos/bloco7_relatorios/ReportsView")));
 const AssinaturaDigitalView = lazy(() => lazyRetry(() => import("../blocos/bloco5_sistema/AssinaturaDigitalView")));
 const EconomatoView = lazy(() => lazyRetry(() => import("../blocos/bloco4_servicos_centrais/EconomatoView")));
-const SystemRegistrationForm = lazy(() => lazyRetry(() => import("../blocos/bloco5_sistema/SystemRegistrationForm")));
+const RegistarFuncionarioForm = lazy(() => lazyRetry(() => import("../blocos/bloco8_gerais/RegistarFuncionarioForm")));
 const LibraryVisitForm = lazy(() => lazyRetry(() => import("../blocos/bloco3_unidades_organicas/LibraryVisitForm")));
 const AcaoOrcamentalView = lazy(() => lazyRetry(() => import("./AcaoOrcamentalView")));
 const PlanoWorkflowView = lazy(() => lazyRetry(() => import("../blocos/bloco5_sistema/PlanoWorkflowView")));
@@ -715,12 +715,60 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
                 <X size={24} />
               </button>
             </div>
-            <SystemRegistrationForm
-              currentUser={extendedUser}
+            <RegistarFuncionarioForm
+              user={extendedUser}
               onCancel={() => onSetView("login")}
-              onSubmit={() => {
-                alert("Registo submetido com sucesso! Irá receber as suas credenciais no e-mail.");
-                onSetView("login");
+              onSubmit={async (finalData) => {
+                try {
+                  // 1. Gravar/Atualizar dados do Colaborador
+                  await firestoreService.colaboradores.update(finalData.id, finalData);
+
+                  // 2. Registar o processo
+                  const formatProcessNumber = (num: number, year: string) => {
+                    return `PR-${year}-${num.toString().padStart(3, "0")}`;
+                  };
+                  const processNo = formatProcessNumber(
+                    Math.floor(Math.random() * 899) + 100,
+                    new Date().getFullYear().toString()
+                  );
+                  await firestoreService.processos.add({
+                    colaboradorId: finalData.id,
+                    colaboradorNome: finalData.nome,
+                    nuit: finalData.nuit,
+                    status: "Concluído",
+                    tipo: "Registo Inicial",
+                    dataSubmissao: new Date().toISOString().split("T")[0],
+                    processoNo: processNo,
+                  });
+
+                  // 3. Sincronizar chefias se aplicável
+                  await firestoreService.syncChefiaAccounts([finalData]);
+
+                  // 4. Criar conta de utilizador se tiver email
+                  if (finalData.email) {
+                    const userMail = finalData.email.toLowerCase().trim();
+                    const defaultUserData = {
+                      id: finalData.id,
+                      name: finalData.nome,
+                      email: userMail,
+                      role: "User",
+                      isOwner: false,
+                      nuit: finalData.nuit || "",
+                      bi: finalData.numeroBI || "",
+                      password: "123456",
+                      mustChangePassword: true,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    };
+                    await firestoreService.users.set(finalData.id, defaultUserData);
+                  }
+
+                  alert("Registo submetido com sucesso! Credenciais padrão criadas (Senha: 123456) para o seu e-mail institucional.");
+                  onSetView("login");
+                } catch (err: any) {
+                  console.error("Erro no registo independente:", err);
+                  alert("Erro ao gravar registo de colaborador: " + (err?.message || String(err)));
+                }
               }}
             />
           </div>

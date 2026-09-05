@@ -1,5 +1,5 @@
 import { printElementById } from "../../lib/printUtils";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import {
   LayoutGrid,
   FileText,
@@ -36,10 +36,10 @@ import {
 import { Expediente } from "../../types";
 import FormularioExpediente from "../bloco6_documentos/FormularioExpediente";
 import DocumentReaderModal from "../../components/DocumentReaderModal";
-import DocumentosView from "../bloco6_documentos/DocumentosView";
-import ReportsView from "../bloco7_relatorios/ReportsView";
-import BalancoAtividadesView from "./BalancoAtividadesView";
-import AssinaturaDigitalView from "../bloco5_sistema/AssinaturaDigitalView";
+const DocumentosView = lazy(() => import("../bloco6_documentos/DocumentosView"));
+const ReportsView = lazy(() => import("../bloco7_relatorios/ReportsView"));
+const BalancoAtividadesView = lazy(() => import("./BalancoAtividadesView"));
+const AssinaturaDigitalView = lazy(() => import("../bloco5_sistema/AssinaturaDigitalView"));
 import MainHeader from "../bloco1_apresentacao/MainHeader";
 import FluxogramaTramitacaoExpediente from "../../components/FluxogramaTramitacaoExpediente";
 import { firestoreService } from "../../lib/firestoreService";

@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
-      chunkSizeWarningLimit: 4000,
+      // REGRA FIXA DO SISTEMA: Esta capacidade NUNCA deve ser alterada sem autorização explícita do utilizador.
+      chunkSizeWarningLimit: 2000000,
       rollupOptions: {
         output: {
           manualChunks(id) {

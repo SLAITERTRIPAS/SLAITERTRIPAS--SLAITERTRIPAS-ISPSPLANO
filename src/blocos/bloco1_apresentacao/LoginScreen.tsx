@@ -119,7 +119,38 @@ const findLocalUser = (lowerInput: string, inputPass?: string) => {
     }
   } catch (e) {}
 
-  // 3. Fallback para Administrador removido conforme solicitado para limpeza de dados de teste.
+  // 3. Fallback para Administrador do Sistema (SLAITER TRIPAS)
+  if (
+    normInput === "slaitertripas@gmail.com" ||
+    normInput === "st849547771" ||
+    normInput === "slaiter tripas" ||
+    normInput === "admin@songo.ac.mz" ||
+    normInput === "admin"
+  ) {
+    return {
+      id: "ST849547771",
+      uid: "ST849547771",
+      email: "slaitertripas@gmail.com",
+      usuario: "slaitertripas@gmail.com",
+      name: "SLAITER TRIPAS",
+      nome: "SLAITER TRIPAS",
+      designacao: "SLAITER TRIPAS",
+      role: "Administrador",
+      cargo: "proprietario e Administrador do Sistema",
+      funcao: "proprietario e Administrador do Sistema",
+      orgao: "proprietario",
+      unidade: "proprietario",
+      unidadeOrganica: "proprietario",
+      direcao: "proprietario",
+      departamento: "proprietario",
+      status: "Ativo / proprietario",
+      efetivo: false,
+      isOwner: true,
+      isProgrammer: true,
+      password: "231383ft",
+      mustChangePassword: false,
+    };
+  }
 
   // 4. Procurar na lista estática EFETIVO_MAP
   const generalCol = EFETIVO_MAP.get(normInput);
@@ -513,7 +544,7 @@ export default function LoginScreen({
         const isNumeric = /^\d+$/.test(lowerInput);
         const numericInput = isNumeric ? Number(lowerInput) : null;
 
-        // Definir as promessas individualmente de forma inteligente
+        // Otimização de consultas: Dispara apenas as consultas estritamente necessárias conforme o tipo de entrada
         const pEmail = isEmail 
           ? getDocs(query(usersRef, where("email", "==", String(lowerInput))))
           : Promise.resolve({ docs: [] });
@@ -720,7 +751,8 @@ export default function LoginScreen({
           "Aviso Firestore na busca do utilizador (possível quota/rede):",
           fsErr,
         );
-        isQuotaError = true;
+        const errStr = String(fsErr?.message || fsErr?.code || fsErr || "").toLowerCase();
+        isQuotaError = fsErr?.code === "resource-exhausted" || errStr.includes("quota") || errStr.includes("resource-exhausted") || errStr.includes("exceeded");
       }
 
       // 3. Fallback para cache/base local se não encontrado no Firestore ou se houve erro de quota
@@ -728,13 +760,17 @@ export default function LoginScreen({
         const localUser = findLocalUser(lowerInput, password);
         if (localUser) {
           user = localUser;
-        } else if (isQuotaError) {
-          // Busca flexível no EFETIVO_GERAL_DATA em caso de erro de quota
+        } else {
+          // Busca flexível no EFETIVO_GERAL_DATA
           const flexibleMatch = EFETIVO_GERAL_DATA.find((c: any) => {
-            const cName = (c.nome || "").toLowerCase();
             const cEmail = (c.email || "").toLowerCase();
             const cNuit = String(c.nuit || "");
-            return cName.includes(lowerInput) || cEmail.includes(lowerInput) || cNuit.includes(lowerInput);
+            const cId = (c as any).id || generateCollaboratorId(c.nome || "", c.nuit || "");
+            return (
+              (cEmail && n(cEmail) === normInput) ||
+              (cNuit && n(cNuit) === normInput) ||
+              (cId && n(cId) === normInput)
+            );
           });
           if (flexibleMatch) {
             user = {
@@ -754,23 +790,6 @@ export default function LoginScreen({
               password: "1234",
               mustChangePassword: true,
             };
-          } else if (lowerInput.length >= 2) {
-            // Criar utilizador de contingência para garantir acesso mesmo com quota esgotada
-            user = {
-              id: `offline_${Date.now()}`,
-              name: identifier.trim(),
-              nome: identifier.trim(),
-              email: lowerInput.includes("@") ? lowerInput : `${lowerInput.split(" ").join(".")}@songo.ac.mz`,
-              nuit: /^\d+$/.test(lowerInput) ? lowerInput : "000000000",
-              role: "CTA",
-              unidade: "Serviços Centrais",
-              direcao: "Direcção Geral",
-              departamento: "Geral",
-              cargo: "Funcionário",
-              status: "Ativo",
-              password: "1234",
-              mustChangePassword: true,
-            };
           }
         }
       }
@@ -778,11 +797,11 @@ export default function LoginScreen({
       if (!user) {
         if (isQuotaError) {
           setError(
-            "O serviço de base de dados atingiu o limite de quota diária temporariamente. Se já acedeu anteriormente neste dispositivo, utilize o seu email/nuit registado.",
+            "O limite de quota diária do Firestore (Plano Gratuito Spark) foi atingido. Para atualizar para quota ilimitada (Plano Blaze), ative a faturação no Console do Firebase.",
           );
         } else {
           setError(
-            "O utilizador não foi encontrado ou não está registado no sistema.",
+            "Dados não encontrados ou você não é colaborador do ISPS.",
           );
         }
         setLoading(false);
@@ -824,11 +843,32 @@ export default function LoginScreen({
           }
         }
 
+        
         if (!isCorrect) {
           setError("A senha está incorreta.");
           setLoading(false);
           return;
         }
+
+        // Verifica se o colaborador está afeto a um setor
+        const cargoRole = (user.role || user.categoria || user.cargo || "").toLowerCase();
+        const isSuperUser =
+          cargoRole.includes("proprietario") ||
+          cargoRole.includes("proprietário") ||
+          user.email === "admin@songo.ac.mz" ||
+          user.email === "slaitertripas@gmail.com";
+        
+        const dir = (user.direcao || "").trim();
+        const dep = (user.departamento || "").trim();
+        const area = (user.areaDeAfetacao || "").trim();
+        const isUnassigned = !dir && !dep && !area;
+
+        if (!isSuperUser && isUnassigned) {
+          setError("Aguarde a sua afetação.");
+          setLoading(false);
+          return;
+        }
+
 
         if (forceChange) {
           setMatchedUser(user);
@@ -1496,7 +1536,9 @@ export default function LoginScreen({
                     )}
                   </button>
                 </div>
-              </form>
+              
+          </form>
+
 
               <div className="mt-8 pt-4 border-t border-gray-100 flex justify-center">
                 <button

@@ -1,4 +1,3 @@
-import { printElementById } from "../../lib/printUtils";
 import React, { useState, useEffect } from "react";
 import {
   UserPlus,
@@ -12,6 +11,10 @@ import {
   ShieldCheck,
   Printer,
   Search,
+  X,
+  Camera,
+  Trash2,
+  CheckCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { firestoreService } from "../../lib/firestoreService";
@@ -24,23 +27,19 @@ import {
   SETORES,
   CURSOS,
   NIVEIS_ACADEMICOS,
-  CATEGORIAS_FUNCIONARIOS,
   CATEGORIAS_DOCENTES,
   CATEGORIAS_CTAA,
   LISTA_FUNCOES,
-  FUNCIONARIOS,
-  HABILITACOES_PROFISSIONAIS_LIST,
 } from "../../constants/formOptions";
 import { EFETIVO_GERAL_DATA } from "../../constants/colaboradoresList";
-import { extractTextFromPDF } from "../../lib/pdfParser";
 import {
   toTitleCase,
   toSentenceCase,
   classifyTipo,
   generateCollaboratorId,
 } from "../../lib/utils";
-
 import { getRoles } from "../../lib/auth";
+import { printElementById } from "../../lib/printUtils";
 
 export default function RegistarFuncionarioForm({
   onCancel,
@@ -59,186 +58,105 @@ export default function RegistarFuncionarioForm({
   const isDCC = roles.isDCC;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [tipoAcesso, setTipoAcesso] = useState<"Chefe" | "Técnico">("Chefe");
+
+  // Fields and State Variables matching the requested images:
+  const [foto, setFoto] = useState<string>(initialData?.foto || "");
+  const [numeroProcesso, setNumeroProcesso] = useState<string>(
+    initialData?.numeroProcesso || initialData?.id || ""
+  );
+  const [nome, setNome] = useState<string>(initialData?.nome || "");
+  const [genero, setGenero] = useState<string>(initialData?.genero || "");
+  const [nuit, setNuit] = useState<string>(initialData?.nuit || "");
+  const [email, setEmail] = useState<string>(initialData?.email || "");
+  const [telefone, setTelefone] = useState<string>(initialData?.telefone || "");
+  const [estadoCivil, setEstadoCivil] = useState<string>(initialData?.estadoCivil || "");
+  const [nomePai, setNomePai] = useState<string>(initialData?.nomePai || "");
+  const [nomeMae, setNomeMae] = useState<string>(initialData?.nomeMae || "");
+  const [numeroBI, setNumeroBI] = useState<string>(initialData?.numeroBI || "");
+  const [emitidoEm, setEmitidoEm] = useState<string>(initialData?.emitidoEm || "");
+  const [dataEmissaoBI, setDataEmissaoBI] = useState<string>(initialData?.dataEmissaoBI || "");
+
+  // Local de Nascimento
+  const [nacionalidade, setNacionalidade] = useState<string>(
+    initialData?.localNascimento?.pais || initialData?.nacionalidade || "Moçambicana"
+  );
+  const [provincia, setProvincia] = useState<string>(
+    initialData?.localNascimento?.provincia || initialData?.provincia || ""
+  );
+  const [distrito, setDistrito] = useState<string>(
+    initialData?.localNascimento?.distrito || initialData?.distrito || ""
+  );
+  const [dataNascimento, setDataNascimento] = useState<string>(
+    initialData?.dataNascimento || ""
+  );
+  const [morada, setMorada] = useState<string>(initialData?.morada || "");
+  const [bairro, setBairro] = useState<string>(initialData?.bairro || "");
+  const [distritoResidencia, setDistritoResidencia] = useState<string>(
+    initialData?.distritoResidencia || ""
+  );
+  const [celula, setCelula] = useState<string>(initialData?.celula || "");
+  const [quarteiraoNo, setQuarteiraoNo] = useState<string>(initialData?.quarteiraoNo || "");
+  const [casaNo, setCasaNo] = useState<string>(initialData?.casaNo || "");
+  const [numeroFilhos, setNumeroFilhos] = useState<number>(
+    initialData?.numeroFilhos !== undefined ? Number(initialData.numeroFilhos) : 0
+  );
+
+  // Dados Profissionais & Formação Académica
+  const [carreira, setCarreira] = useState<string>(
+    initialData?.carreira || (initialData?.tipo === "Docente" ? "Docente" : "CTA")
+  );
+  const [categoria, setCategoria] = useState<string>(initialData?.categoria || "");
+  const [funcao, setFuncao] = useState<string>(initialData?.funcao || "");
+  const [efetivo, setEfetivo] = useState<string>(
+    initialData?.efetivo === true ? "Sim" : initialData?.efetivo === false ? "Não" : "Sim"
+  );
+  const [tipoContrato, setTipoContrato] = useState<string>(initialData?.tipoContrato || "");
+  const [vinculoContractual, setVinculoContractual] = useState<string>(
+    initialData?.vinculoContractual || ""
+  );
+  const [dataAdmissao, setDataAdmissao] = useState<string>(initialData?.dataAdmissao || "");
+  const [nivelAcademico, setNivelAcademico] = useState<string>(initialData?.nivelAcademico || "");
+  const [areaFormacao, setAreaFormacao] = useState<string>(initialData?.areaFormacao || "");
+  const [disciplinas, setDisciplinas] = useState<string[]>(
+    initialData?.disciplinas || ["", "", "", ""]
+  );
+
+  // Alocação Institucional / Cargo de Chefia e Confianças
+  const [unidade, setUnidade] = useState<string>(
+    initialData?.unidade || initialData?.userArea?.unidade || ""
+  );
+  const [direcao, setDirecao] = useState<string>(
+    initialData?.direcao || initialData?.userArea?.direcao || ""
+  );
+  const [departamento, setDepartamento] = useState<string>(
+    initialData?.departamento || initialData?.userArea?.departamento || ""
+  );
+  const [reparticao, setReparticao] = useState<string>(
+    initialData?.reparticao || initialData?.userArea?.reparticao || ""
+  );
+  const [sector, setSector] = useState<string>(
+    initialData?.sector || initialData?.userArea?.setor || ""
+  );
+  const [cargo, setCargo] = useState<string>(initialData?.cargo || "");
+  const [dataNomeacao, setDataNomeacao] = useState<string>(initialData?.dataNomeacao || "");
+  const [dataDesnomeacao, setDataDesnomeacao] = useState<string>(initialData?.dataDesnomeacao || "");
+  const [estadoMandato, setEstadoMandato] = useState<string>(
+    initialData?.estadoMandato || "Em Actividade"
+  );
+  const [estado, setEstado] = useState<string>(initialData?.estado || "Ativo");
+
+  // Search logic for pre-populating existing staff (highly productive features must be preserved)
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [page, setPage] = useState(1);
-  const totalPages = 5;
-
-  const renderPagination = () => (
-    <div className="flex justify-between mt-8 border-t border-black pt-4">
-      <button
-        type="button"
-        onClick={() => setPage(p => Math.max(1, p - 1))}
-        disabled={page === 1}
-        className="px-6 py-2 border border-black font-bold text-black hover:bg-gray-100 disabled:opacity-50"
-      >
-        Anterior
-      </button>
-      <span className="font-bold">Página {page} de {totalPages}</span>
-      {page < totalPages ? (
-        <button
-          type="button"
-          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-          className="px-6 py-2 bg-blue-600 text-white font-bold hover:bg-blue-700"
-        >
-          Próximo
-        </button>
-      ) : (
-        <button
-          onClick={handleLocalSubmit}
-          disabled={isSubmitting || isSubmitted}
-          className="px-6 py-2 bg-[#00b0f0] border border-black text-black font-bold hover:bg-[#0090c0] tracking-widest text-sm flex items-center gap-2 disabled:opacity-50"
-        >
-          {isSubmitting ? "A processar..." : isSubmitted ? "Registado" : "Submeter"}
-        </button>
-      )}
-    </div>
-  );
-
-  const getSectorsForDepartment = (dept: string): string[] => {
-    if (!dept) return [];
-    const reparticoes = DEPARTAMENTOS[dept] || [];
-    let sectors: string[] = [];
-    reparticoes.forEach((rep) => {
-      if (SETORES[rep]) {
-        sectors = [...sectors, ...SETORES[rep]];
-      }
-      if (REPARTICOES[rep]) {
-        REPARTICOES[rep].forEach((subRep) => {
-          if (SETORES[subRep]) {
-            sectors = [...sectors, ...SETORES[subRep]];
-          }
-        });
-      }
-    });
-    return Array.from(new Set(sectors));
-  };
-
   const [selectedExistingId, setSelectedExistingId] = useState<string | null>(
-    initialData?.id || null,
-  );
-  const [numeroProcesso, setNumeroProcesso] = useState(
-    initialData?.numeroProcesso || initialData?.id || "",
+    initialData?.id || null
   );
 
-  const [ord, setOrd] = useState(initialData?.ord?.toString() || "");
-  const [nome, setNome] = useState(initialData?.nome || "");
-  const [genero, setGenero] = useState(initialData?.genero || "");
-  const [dataNascimento, setDataNascimento] = useState(
-    initialData?.dataNascimento || "",
-  );
-  const [nacionalidade, setNacionalidade] = useState(
-    initialData?.localNascimento?.pais ||
-      initialData?.nacionalidade ||
-      "Moçambique",
-  );
-  const [provincia, setProvincia] = useState(
-    initialData?.localNascimento?.provincia || initialData?.provincia || "",
-  );
-  const [distrito, setDistrito] = useState(
-    initialData?.localNascimento?.distrito || initialData?.distrito || "",
-  );
-  const [nuit, setNuit] = useState(initialData?.nuit || "");
-  const [numeroBI, setNumeroBI] = useState(initialData?.numeroBI || "");
-  const [nivelAcademico, setNivelAcademico] = useState(
-    initialData?.nivelAcademico || "",
-  );
-  const [areaFormacao, setAreaFormacao] = useState(
-    initialData?.areaFormacao || "",
-  );
-  const [categoria, setCategoria] = useState(initialData?.categoria || "");
-  const [vinculoContractual, setVinculoContractual] = useState(
-    initialData?.vinculoContractual || "",
-  );
-  const [funcao, setFuncao] = useState(initialData?.funcao || "");
-  const [cargoChefia, setCargoChefia] = useState(
-    initialData?.cargoChefia || "",
-  );
-  const [tipoContrato, setTipoContrato] = useState(
-    initialData?.tipoContrato || "",
-  );
-  const [carreira, setCarreira] = useState(
-    initialData?.carreira || (initialData?.tipo === "Docente" ? "Docente" : ""),
-  );
-  const [efetivo, setEfetivo] = useState(initialData?.efetivo || false);
-
-  const handleCargoChefiaChange = (val: string) => {
-    setCargoChefia(val);
-    if (
-      val !== "Nenhum" &&
-      val !== "" &&
-      estadoMandato !== "Cessado" &&
-      estadoMandato !== "Despromovido"
-    ) {
-      setEstadoMandato("Em Actividade");
-    }
-  };
-  const [cargo, setCargo] = useState(initialData?.cargo || "");
-  console.log("RegistarFuncionarioForm initialData:", initialData);
-  const [unidade, setUnidade] = useState(
-    initialData?.unidade || initialData?.userArea?.unidade || "",
-  );
-  const [direcao, setDirecao] = useState(
-    initialData?.direcao || initialData?.userArea?.direcao || "",
-  );
-  const [departamento, setDepartamento] = useState(
-    initialData?.departamento || initialData?.userArea?.departamento || "",
-  );
-  const availableSectors = getSectorsForDepartment(departamento);
-  const [reparticao, setReparticao] = useState(
-    initialData?.reparticao || initialData?.userArea?.reparticao || "",
-  );
-  const [sector, setSector] = useState(
-    initialData?.sector || initialData?.userArea?.setor || "",
-  );
-  const [setoresAtribuidos, setSetoresAtribuidos] = useState<string[]>(
-    initialData?.setoresAtribuidos || [],
-  );
-  const [curso, setCurso] = useState(initialData?.curso || "");
-  const [cursos, setCursos] = useState<string[]>(
-    initialData?.cursos ||
-      (initialData?.curso ? [initialData.curso, "", "", ""] : ["", "", "", ""]),
-  );
-
-  // Sincronizar estado local quando initialData mudar (importante para edições sucessivas)
-  React.useEffect(() => {
-    if (initialData) {
-      setUnidade(initialData.unidade || initialData.userArea?.unidade || "");
-      setDirecao(initialData.direcao || initialData.userArea?.direcao || "");
-      setDepartamento(
-        initialData.departamento || initialData.userArea?.departamento || "",
-      );
-      setReparticao(
-        initialData.reparticao || initialData.userArea?.reparticao || "",
-      );
-      setSector(initialData.sector || initialData.userArea?.setor || "");
-      setCurso(initialData.curso || "");
-      setCursos(
-        initialData.cursos ||
-          (initialData.curso
-            ? [initialData.curso, "", "", ""]
-            : ["", "", "", ""]),
-      );
-      setCargo(initialData.cargo || "");
-      setCargoChefia(initialData.cargoChefia || "Nenhum");
-      setEstado(initialData.estado || "Ativo");
-      setEstadoMandato(initialData.estadoMandato || "Em Actividade");
-    }
-  }, [initialData]);
-  const [disciplinas, setDisciplinas] = useState<string[]>(
-    initialData?.disciplinas || ["", "", "", ""],
-  );
-  const [estado, setEstado] = useState(initialData?.estado || "Ativo");
-  const [estadoMandato, setEstadoMandato] = useState(
-    initialData?.estadoMandato || "Em Actividade",
-  );
-
-  // Lógica de Persistência (Memória do Sistema)
+  // Sync / Draft system for persistent storage in browser or cloud
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const FORM_ID = "registar_funcionario_form";
+  const FORM_ID = "registar_funcionario_form_new";
   let currentUser: any = {};
   try {
     currentUser = JSON.parse(
@@ -257,7 +175,7 @@ export default function RegistarFuncionarioForm({
       try {
         const cloudDraft = await firestoreService.drafts.getByUserAndForm(
           currentUser.id,
-          FORM_ID,
+          FORM_ID
         );
         if (cloudDraft) {
           setShowDraftModal(true);
@@ -275,73 +193,105 @@ export default function RegistarFuncionarioForm({
     if (isDraftLoaded && !initialData && currentUser?.id) {
       setIsSyncing(true);
       const draftData = {
+        foto,
+        numeroProcesso,
         nome,
         genero,
-        dataNascimento,
+        nuit,
+        email,
+        telefone,
+        estadoCivil,
+        nomePai,
+        nomeMae,
+        numeroBI,
+        emitidoEm,
+        dataEmissaoBI,
         nacionalidade,
         provincia,
         distrito,
-        nuit,
-        numeroBI,
+        dataNascimento,
+        morada,
+        bairro,
+        distritoResidencia,
+        celula,
+        quarteiraoNo,
+        casaNo,
+        numeroFilhos,
+        carreira,
+        categoria,
+        funcao,
+        efetivo,
+        tipoContrato,
+        vinculoContractual,
+        dataAdmissao,
         nivelAcademico,
         areaFormacao,
-        categoria,
-        vinculoContractual,
-        funcao,
-        cargoChefia,
-        tipoContrato,
-        carreira,
-        efetivo,
-        cargo,
+        disciplinas,
         unidade,
         direcao,
         departamento,
         reparticao,
         sector,
-        curso,
-        estado,
+        cargo,
+        dataNomeacao,
+        dataDesnomeacao,
         estadoMandato,
-        numeroProcesso,
-        ord,
+        estado,
         lastSync: new Date().toISOString(),
       };
       const timer = setTimeout(() => {
         firestoreService.drafts
           .save(currentUser.id, FORM_ID, draftData)
           .finally(() => setIsSyncing(false));
-      }, 15000); // 15s debounce para evitar esgotamento de quota
+      }, 15000);
       return () => clearTimeout(timer);
     }
   }, [
     isDraftLoaded,
+    foto,
+    numeroProcesso,
     nome,
     genero,
-    dataNascimento,
+    nuit,
+    email,
+    telefone,
+    estadoCivil,
+    nomePai,
+    nomeMae,
+    numeroBI,
+    emitidoEm,
+    dataEmissaoBI,
     nacionalidade,
     provincia,
     distrito,
-    nuit,
-    numeroBI,
+    dataNascimento,
+    morada,
+    bairro,
+    distritoResidencia,
+    celula,
+    quarteiraoNo,
+    casaNo,
+    numeroFilhos,
+    carreira,
+    categoria,
+    funcao,
+    efetivo,
+    tipoContrato,
+    vinculoContractual,
+    dataAdmissao,
     nivelAcademico,
     areaFormacao,
-    categoria,
-    vinculoContractual,
-    funcao,
-    cargoChefia,
-    tipoContrato,
-    carreira,
-    efetivo,
-    cargo,
+    disciplinas,
     unidade,
     direcao,
     departamento,
     reparticao,
     sector,
-    curso,
-    estado,
+    cargo,
+    dataNomeacao,
+    dataDesnomeacao,
     estadoMandato,
-    numeroProcesso,
-    ord,
+    estado,
     currentUser?.id,
     initialData,
   ]);
@@ -351,40 +301,53 @@ export default function RegistarFuncionarioForm({
     try {
       const draft: any = await firestoreService.drafts.getByUserAndForm(
         currentUser.id,
-        FORM_ID,
+        FORM_ID
       );
       if (draft) {
+        if (draft.foto) setFoto(draft.foto);
+        if (draft.numeroProcesso) setNumeroProcesso(draft.numeroProcesso);
         if (draft.nome) setNome(draft.nome);
         if (draft.genero) setGenero(draft.genero);
-        if (draft.dataNascimento) setDataNascimento(draft.dataNascimento);
+        if (draft.nuit) setNuit(draft.nuit);
+        if (draft.email) setEmail(draft.email);
+        if (draft.telefone) setTelefone(draft.telefone);
+        if (draft.estadoCivil) setEstadoCivil(draft.estadoCivil);
+        if (draft.nomePai) setNomePai(draft.nomePai);
+        if (draft.nomeMae) setNomeMae(draft.nomeMae);
+        if (draft.numeroBI) setNumeroBI(draft.numeroBI);
+        if (draft.emitidoEm) setEmitidoEm(draft.emitidoEm);
+        if (draft.dataEmissaoBI) setDataEmissaoBI(draft.dataEmissaoBI);
         if (draft.nacionalidade) setNacionalidade(draft.nacionalidade);
         if (draft.provincia) setProvincia(draft.provincia);
         if (draft.distrito) setDistrito(draft.distrito);
-        if (draft.nuit) setNuit(draft.nuit);
-        if (draft.numeroBI) setNumeroBI(draft.numeroBI);
+        if (draft.dataNascimento) setDataNascimento(draft.dataNascimento);
+        if (draft.morada) setMorada(draft.morada);
+        if (draft.bairro) setBairro(draft.bairro);
+        if (draft.distritoResidencia) setDistritoResidencia(draft.distritoResidencia);
+        if (draft.celula) setCelula(draft.celula);
+        if (draft.quarteiraoNo) setQuarteiraoNo(draft.quarteiraoNo);
+        if (draft.casaNo) setCasaNo(draft.casaNo);
+        if (draft.numeroFilhos !== undefined) setNumeroFilhos(Number(draft.numeroFilhos));
+        if (draft.carreira) setCarreira(draft.carreira);
+        if (draft.categoria) setCategoria(draft.categoria);
+        if (draft.funcao) setFuncao(draft.funcao);
+        if (draft.efetivo) setEfetivo(draft.efetivo);
+        if (draft.tipoContrato) setTipoContrato(draft.tipoContrato);
+        if (draft.vinculoContractual) setVinculoContractual(draft.vinculoContractual);
+        if (draft.dataAdmissao) setDataAdmissao(draft.dataAdmissao);
         if (draft.nivelAcademico) setNivelAcademico(draft.nivelAcademico);
         if (draft.areaFormacao) setAreaFormacao(draft.areaFormacao);
-        if (draft.categoria) setCategoria(draft.categoria);
-        if (draft.vinculoContractual)
-          setVinculoContractual(draft.vinculoContractual);
-        if (draft.funcao) setFuncao(draft.funcao);
-        if (draft.cargoChefia) setCargoChefia(draft.cargoChefia);
-        if (draft.tipoContrato) setTipoContrato(draft.tipoContrato);
-        if (draft.carreira) setCarreira(draft.carreira);
-        if (draft.efetivo !== undefined) setEfetivo(draft.efetivo);
-        if (draft.cargo) setCargo(draft.cargo);
+        if (draft.disciplinas) setDisciplinas(draft.disciplinas);
         if (draft.unidade) setUnidade(draft.unidade);
         if (draft.direcao) setDirecao(draft.direcao);
         if (draft.departamento) setDepartamento(draft.departamento);
         if (draft.reparticao) setReparticao(draft.reparticao);
         if (draft.sector) setSector(draft.sector);
-        if (draft.curso) setCurso(draft.curso);
-        if (draft.cursos) setCursos(draft.cursos);
-        if (draft.disciplinas) setDisciplinas(draft.disciplinas);
-        if (draft.estado) setEstado(draft.estado);
+        if (draft.cargo) setCargo(draft.cargo);
+        if (draft.dataNomeacao) setDataNomeacao(draft.dataNomeacao);
+        if (draft.dataDesnomeacao) setDataDesnomeacao(draft.dataDesnomeacao);
         if (draft.estadoMandato) setEstadoMandato(draft.estadoMandato);
-        if (draft.numeroProcesso) setNumeroProcesso(draft.numeroProcesso);
-        if (draft.ord) setOrd(draft.ord);
+        if (draft.estado) setEstado(draft.estado);
       }
     } catch (e) {
       console.error("Erro ao recuperar rascunho:", e);
@@ -396,7 +359,7 @@ export default function RegistarFuncionarioForm({
     if (currentUser?.id) {
       await firestoreService.drafts.deleteByUserAndForm(
         currentUser.id,
-        FORM_ID,
+        FORM_ID
       );
     }
     setIsDraftLoaded(true);
@@ -405,63 +368,186 @@ export default function RegistarFuncionarioForm({
 
   const handleSelectDocente = (docente: any) => {
     setSelectedExistingId(docente.id || null);
+    if (docente.foto) setFoto(docente.foto);
     setNome(docente.nome || "");
     setGenero(docente.genero || "");
-    setDataNascimento(docente.dataNascimento || "");
+    setNuit(docente.nuit || "");
+    setEmail(docente.email || "");
+    setTelefone(docente.telefone || "");
+    setEstadoCivil(docente.estadoCivil || "");
+    setNomePai(docente.nomePai || "");
+    setNomeMae(docente.nomeMae || "");
+    setNumeroBI(docente.numeroBI || "");
+    setEmitidoEm(docente.emitidoEm || "");
+    setDataEmissaoBI(docente.dataEmissaoBI || "");
+
     setNacionalidade(
-      docente.localNascimento?.pais || docente.nacionalidade || "Moçambique",
+      docente.localNascimento?.pais || docente.nacionalidade || "Moçambicana"
     );
     setProvincia(docente.localNascimento?.provincia || docente.provincia || "");
     setDistrito(docente.localNascimento?.distrito || docente.distrito || "");
-    setNuit(docente.nuit || "");
-    setNumeroBI(docente.numeroBI || "");
+    setDataNascimento(docente.dataNascimento || "");
+    setMorada(docente.morada || "");
+    setBairro(docente.bairro || "");
+    setDistritoResidencia(docente.distritoResidencia || "");
+    setCelula(docente.celula || "");
+    setQuarteiraoNo(docente.quarteiraoNo || "");
+    setCasaNo(docente.casaNo || "");
+    setNumeroFilhos(docente.numeroFilhos !== undefined ? Number(docente.numeroFilhos) : 0);
+
+    setCarreira(
+      docente.carreira || (docente.tipo === "Docente" ? "Docente" : "CTA")
+    );
+    setCategoria(docente.categoria || "");
+    setFuncao(docente.funcao || "");
+    setEfetivo(docente.efetivo === true || docente.efetivo === "Sim" ? "Sim" : "Não");
+    setTipoContrato(docente.tipoContrato || "");
+    setVinculoContractual(docente.vinculoContractual || "");
+    setDataAdmissao(docente.dataAdmissao || "");
     setNivelAcademico(docente.nivelAcademico || "");
     setAreaFormacao(docente.areaFormacao || "");
-    setCategoria(docente.categoria || "");
-    setVinculoContractual(docente.vinculoContractual || "");
-    setFuncao(docente.funcao || "");
-    setCargoChefia(docente.cargoChefia || "");
-    setTipoContrato(docente.tipoContrato || "");
-    setCarreira(
-      docente.carreira || (docente.tipo === "Docente" ? "Docente" : ""),
-    );
-    setEfetivo(docente.efetivo || false);
-    setCargo(docente.cargo || "");
+    setDisciplinas(docente.disciplinas || ["", "", "", ""]);
+
     setUnidade(docente.unidade || "");
     setDirecao(docente.direcao || "");
     setDepartamento(docente.departamento || "");
     setReparticao(docente.reparticao || "");
     setSector(docente.sector || "");
-    setSetoresAtribuidos(docente.setoresAtribuidos || []);
-    setCurso(docente.curso || "");
-    setCursos(
-      docente.cursos ||
-        (docente.curso ? [docente.curso, "", "", ""] : ["", "", "", ""]),
-    );
-    setDisciplinas(docente.disciplinas || ["", "", "", ""]);
-    setEstado(docente.estado || "Ativo");
+    setCargo(docente.cargo || "");
+    setDataNomeacao(docente.dataNomeacao || "");
+    setDataDesnomeacao(docente.dataDesnomeacao || "");
     setEstadoMandato(docente.estadoMandato || "Em Actividade");
+    setEstado(docente.estado || "Ativo");
 
     setSearchTerm(docente.nome);
     setShowSearchResults(false);
-    setSelectedExistingId(docente.id || null);
     if (docente.numeroProcesso || docente.id) {
       setNumeroProcesso(docente.numeroProcesso || docente.id);
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (nome || nuit) {
       const generatedId = generateCollaboratorId(nome, nuit);
-      if (generatedId) {
+      if (generatedId && !numeroProcesso) {
         setNumeroProcesso(generatedId);
       }
     }
   }, [nome, nuit]);
 
-  React.useEffect(() => {
-    // A alocação automática foi removida para permitir que o campo esteja em branco conforme solicitado pelo utilizador.
-  }, [cargoChefia, unidade, direcao]);
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLocalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nome) {
+      alert("Por favor, introduza o Nome Completo.");
+      return;
+    }
+    if (!genero) {
+      alert("Por favor, selecione o Género.");
+      return;
+    }
+    if (!unidade) {
+      alert("Por favor, selecione o Órgão de Alocação Institucional.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const computedId =
+        selectedExistingId ||
+        initialData?.id ||
+        numeroProcesso ||
+        generateCollaboratorId(nome, nuit) ||
+        `COLAB-${Date.now()}`;
+
+      const finalData = {
+        ...initialData,
+        id: computedId,
+        numeroProcesso: numeroProcesso || computedId,
+        foto,
+        nome: toTitleCase(nome),
+        genero,
+        nuit,
+        email,
+        telefone,
+        estadoCivil,
+        nomePai: toTitleCase(nomePai),
+        nomeMae: toTitleCase(nomeMae),
+        numeroBI,
+        emitidoEm: toTitleCase(emitidoEm),
+        dataEmissaoBI,
+        localNascimento: {
+          pais: toTitleCase(nacionalidade),
+          provincia: toTitleCase(provincia),
+          distrito: toTitleCase(distrito),
+        },
+        nacionalidade: toTitleCase(nacionalidade),
+        provincia: toTitleCase(provincia),
+        distrito: toTitleCase(distrito),
+        dataNascimento,
+        morada: toTitleCase(morada),
+        bairro: toTitleCase(bairro),
+        distritoResidencia: toTitleCase(distritoResidencia),
+        celula,
+        quarteiraoNo,
+        casaNo,
+        numeroFilhos: Number(numeroFilhos) || 0,
+        carreira,
+        categoria: toTitleCase(categoria),
+        funcao: toTitleCase(funcao),
+        efetivo: efetivo === "Sim",
+        tipoContrato,
+        vinculoContractual,
+        dataAdmissao,
+        nivelAcademico,
+        areaFormacao: toTitleCase(areaFormacao),
+        disciplinas: disciplinas.map((d) => toTitleCase(d)),
+        unidade,
+        direcao,
+        departamento,
+        reparticao,
+        sector,
+        cargo: toSentenceCase(cargo || carreira),
+        dataNomeacao,
+        dataDesnomeacao,
+        estadoMandato,
+        estado,
+        status: estado,
+        tipo: carreira,
+        areaDeAfetacao: (() => {
+          if (reparticao && reparticao !== "Nenhum" && reparticao !== "-")
+            return toTitleCase(reparticao);
+          if (departamento && departamento !== "Nenhum" && departamento !== "-")
+            return toTitleCase(departamento);
+          if (direcao && direcao !== "Nenhum" && direcao !== "-")
+            return toTitleCase(direcao);
+          return toTitleCase(unidade || "");
+        })(),
+      };
+
+      await onSubmit(finalData);
+
+      if (currentUser?.id) {
+        await firestoreService.drafts.deleteByUserAndForm(currentUser.id, FORM_ID);
+      }
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error("Erro ao guardar o funcionário:", err);
+      alert("Ocorreu um erro ao guardar o registo.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const CARGOS_CHEFIA_LIST = [
     "Diretor-Geral",
@@ -478,197 +564,61 @@ export default function RegistarFuncionarioForm({
     "Proprietário do sistema",
   ];
 
-  const handleUnidadeChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
-  ) => {
-    setUnidade(e.target.value);
-    setDirecao("");
-    setDepartamento("");
-    setReparticao("");
-    setCurso("");
-    setSector("");
-  };
+  // Helper inputs and selects to keep UI modular, highly polished, matching images
+  const InputGroup = ({ label, value, onChange, placeholder, type = "text", required, className, disabled, maxLength }: any) => (
+    <div className={`flex flex-col gap-1 w-full ${className || ""}`}>
+      {label && (
+        <label className={`text-[11px] font-black tracking-tight mb-0.5 ${required ? "text-red-600" : "text-slate-800"}`}>
+          {label}
+        </label>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        maxLength={maxLength}
+        className={`bg-white border border-slate-200 rounded-[14px] px-4 py-3 text-slate-800 text-sm focus:border-blue-500 focus:outline-none transition-all w-full font-bold placeholder:font-normal placeholder:text-slate-300 disabled:opacity-50`}
+      />
+    </div>
+  );
 
-  const handleDirecaoChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
-  ) => {
-    const val = e.target.value;
-    setDirecao(val);
-    if (val && !unidade) {
-      const parentUnit = UNIDADES_ORGANICAS_SISTEMA.find((u) =>
-        u.direcoes?.includes(val),
-      );
-      if (parentUnit) setUnidade(parentUnit.nome);
-    }
-    setDepartamento("");
-    setReparticao("");
-    setCurso("");
-    setSector("");
-  };
-
-  const handleDepartamentoChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
-  ) => {
-    const val = e.target.value;
-    setDepartamento(val);
-    if (val && !direcao) {
-      for (const [dKey, deptList] of Object.entries({
-        ...DEPARTAMENTOS,
-        ...DEPARTAMENTOS,
-      })) {
-        if (deptList?.includes(val)) {
-          setDirecao(dKey);
-          if (!unidade) {
-            const parentUnit = UNIDADES_ORGANICAS_SISTEMA.find((u) =>
-              u.direcoes?.includes(dKey),
+  const SelectGroup = ({ label, value, onChange, options, placeholder, required, className, textClassName, borderClassName }: any) => (
+    <div className={`flex flex-col gap-1 w-full ${className || ""}`}>
+      {label && (
+        <label className={`text-[11px] font-black tracking-tight mb-0.5 ${required ? "text-red-600" : "text-slate-800"}`}>
+          {label}
+        </label>
+      )}
+      <div className="relative w-full">
+        <select
+          value={value}
+          onChange={onChange}
+          className={`appearance-none bg-white border ${borderClassName || "border-slate-200"} rounded-[14px] px-4 py-3 text-slate-800 text-sm focus:border-blue-500 focus:outline-none transition-all w-full pr-10 font-black ${textClassName || ""}`}
+        >
+          {placeholder && <option value="">{placeholder}</option>}
+          {options.map((opt: any) => {
+            const val = typeof opt === "string" ? opt : opt.value;
+            const lbl = typeof opt === "string" ? opt : opt.label;
+            return (
+              <option key={val} value={val} className="text-slate-800">
+                {lbl}
+              </option>
             );
-            if (parentUnit) setUnidade(parentUnit.nome);
-          }
-          break;
-        }
-      }
-    }
-    setReparticao("");
-    setCurso("");
-    setSector("");
-  };
-
-  const handleReparticaoChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
-  ) => {
-    setReparticao(e.target.value);
-    setSector("");
-  };
-
-  const handleEstadoMandatoChange = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const val = e.target.value;
-    setEstadoMandato(val);
-    if (val === "Cessado" || val === "Nenhum" || val === "Despromovido") {
-      setCargoChefia("Nenhum");
-      setCarreira(carreira || "Docente"); // Ensure we have a base function
-      setCargo(carreira || "Docente"); // Reset cargo to base function
-      setDirecao("");
-      setDepartamento("");
-      setReparticao("");
-      setSector("");
-      setCurso("");
-    }
-  };
-
-  const handleProvinciaChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
-  ) => {
-    setProvincia(e.target.value);
-    setDistrito("");
-  };
-
-  const handleSubmit = () => {
-    if (!nome || !genero || !unidade) {
-      alert(
-        "Por favor, preencha os campos obrigatórios (Nome, Género, Unidade).",
-      );
-      return;
-    }
-
-    if (nuit) {
-      const isDuplicateNUIT = EFETIVO_GERAL_DATA.some((c) => c.nuit === nuit);
-      if (isDuplicateNUIT) {
-        alert("Este NUIT já está registado. Verifique os dados repetidos.");
-        return;
-      }
-    }
-
-    if (numeroBI) {
-      const isDuplicateBI = EFETIVO_GERAL_DATA.some(
-        (c) => c.numeroBI?.toLowerCase() === numeroBI.toLowerCase(),
-      );
-      if (isDuplicateBI) {
-        alert(
-          "Este número de B.I. já está registado. Verifique os dados repetidos.",
-        );
-        return;
-      }
-    }
-
-    const computedId =
-      selectedExistingId ||
-      initialData?.id ||
-      numeroProcesso ||
-      generateCollaboratorId(nome, nuit) ||
-      `COLAB-${Date.now()}`;
-
-    const data = {
-      ...initialData,
-      id: computedId,
-      numeroProcesso: numeroProcesso || computedId,
-      ord: parseInt(ord, 10) || EFETIVO_GERAL_DATA.length + 1,
-      nome: toTitleCase(nome),
-      genero,
-      dataNascimento,
-      localNascimento: {
-        pais: toTitleCase(nacionalidade),
-        provincia: toTitleCase(provincia),
-        distrito: toTitleCase(distrito),
-      },
-      nuit,
-      numeroBI,
-      nivelAcademico: toTitleCase(nivelAcademico),
-      areaFormacao: toTitleCase(areaFormacao),
-      categoria: toTitleCase(categoria),
-      vinculoContractual: toTitleCase(vinculoContractual),
-      funcao: toTitleCase(funcao),
-      cargoChefia: toTitleCase(cargoChefia),
-      tipoContrato: toSentenceCase(tipoContrato),
-      carreira: toSentenceCase(carreira),
-      efetivo: efetivo,
-      unidade: toTitleCase(unidade),
-      direcao: toTitleCase(direcao),
-      departamento: toTitleCase(departamento),
-      reparticao: toTitleCase(reparticao),
-      sector: toTitleCase(sector),
-      setoresAtribuidos: setoresAtribuidos,
-      curso: toTitleCase(curso),
-      cursos: cursos.map((c) => toTitleCase(c)),
-      disciplinas: disciplinas.map((d) => toTitleCase(d)),
-      cargo: toSentenceCase(cargo || carreira),
-      tipo: carreira === "CTA" ? "CTA" : toSentenceCase(carreira),
-      estado: toTitleCase(estado),
-      status: toTitleCase(estado),
-      estadoMandato: estadoMandato,
-      areaDeAfetacao: (() => {
-        if (reparticao && reparticao !== "Nenhum" && reparticao !== "-")
-          return toTitleCase(reparticao);
-        if (departamento && departamento !== "Nenhum" && departamento !== "-")
-          return toTitleCase(departamento);
-        if (direcao && direcao !== "Nenhum" && direcao !== "-")
-          return toTitleCase(direcao);
-        return toTitleCase(unidade || "");
-      })(),
-    };
-
-    onSubmit(data);
-    // Limpar rascunho ao submeter com sucesso (Memória do Sistema)
-    if (currentUser?.id) {
-      firestoreService.drafts.deleteByUserAndForm(currentUser.id, FORM_ID);
-    }
-    setIsSubmitted(true);
-  };
-
-  const handleLocalSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      await handleSubmit();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+          })}
+        </select>
+        <div className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${textClassName || "text-slate-900"}`}>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-      <div className="relative">
+    <div className="relative min-h-screen bg-slate-50/50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <DraftModal
         show={showDraftModal}
         onRecover={recoverDraft}
@@ -677,10 +627,10 @@ export default function RegistarFuncionarioForm({
 
       <SyncIndicator
         isSyncing={isSyncing}
-        className="absolute top-4 right-4 z-50"
+        className="fixed top-4 right-4 z-50"
       />
 
-      {/* Success Overlay */}
+      {/* Success Notification Modal */}
       {isSubmitted && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm print:hidden">
           <motion.div
@@ -692,778 +642,635 @@ export default function RegistarFuncionarioForm({
               <ShieldCheck size={40} />
             </div>
             <h3 className="text-2xl font-black text-slate-900 tracking-tighter mb-2">
-              Funcionário Registado!
+              Registo Efetuado!
             </h3>
             <p className="text-slate-500 text-sm leading-relaxed mb-8">
-              O funcionário{" "}
-              <span className="font-bold text-slate-900">{nome}</span> foi
-              registado no sistema com sucesso. Pode agora imprimir a ficha de
-              cadastro individual.
+              O colaborador <span className="font-extrabold text-slate-900">{nome}</span> foi registado com sucesso no sistema.
             </p>
 
             <div className="grid grid-cols-1 gap-3">
               <button
                 onClick={() => printElementById("print-area")}
-                className="w-full bg-[#00b0f0] border border-black text-black py-4 rounded-lg font-bold text-[10px] tracking-[0.2em] hover:bg-[#0090c0] transition-all shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-[#00b0f0] text-white py-4 rounded-xl font-bold tracking-widest hover:bg-[#0090c0] transition-all shadow-md flex items-center justify-center gap-2"
               >
                 <Printer size={18} /> Imprimir Ficha de Cadastro
               </button>
               <button
                 onClick={onCancel}
-                className="w-full bg-slate-100 text-slate-600 py-4 rounded-lg font-bold text-[10px] tracking-[0.2em] hover:bg-slate-200 transition-all border border-slate-200"
+                className="w-full bg-slate-100 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-200 transition-all border border-slate-200"
               >
-                Fechar e Voltar
+                Voltar ao Menu
               </button>
             </div>
           </motion.div>
         </div>
       )}
 
-      <div className="bg-white rounded-none shadow-xl border border-black overflow-hidden w-[90%] max-w-5xl mx-auto font-[Times_New_Roman,Times,serif]">
-        <div className="bg-[#00b0f0] text-black p-4 flex items-center justify-between gap-4 border-b border-black">
-          <div className="flex items-center gap-4">
-            <UserPlus size={32} />
-            <div>
-              <h2 className="text-2xl font-bold tracking-wider">
-                Registo de Funcionário
-              </h2>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 space-y-6">
-          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8">
-            <label className="block text-xs font-black text-blue-600 tracking-widest mb-3">
-              Pesquisar Docente Existente (Auto-preenchimento)
+      {/* Main Single Screen Layout Container with top blue accent line */}
+      <div className="w-full max-w-5xl mx-auto bg-white rounded-t-[32px] rounded-b-[32px] shadow-2xl border-t-[8px] border-blue-600 overflow-hidden relative pb-16">
+        
+        {/* Banner header to upload photo as shown in the screenshots */}
+        <div className="p-8 border-b border-slate-100 flex flex-col items-center text-center">
+          
+          {/* Circular file input trigger for the employee picture */}
+          <div className="relative mb-4">
+            <input
+              type="file"
+              accept="image/*"
+              id="employee-photo-upload"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+            <label
+              htmlFor="employee-photo-upload"
+              className="w-28 h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[24px] flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100/70 hover:border-blue-400 transition-all gap-1 overflow-hidden group shadow-sm"
+              title="Clique para carregar fotografia"
+            >
+              {foto ? (
+                <>
+                  <img
+                    src={foto}
+                    alt="Foto do Funcionário"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+                    <Camera size={16} /> Alterar
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
+                    <UserPlus size={20} />
+                  </div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 group-hover:text-blue-500 transition-all">
+                    Adicionar Foto
+                  </span>
+                </>
+              )}
             </label>
-            <div className="relative">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={20}
-              />
-              <input
-                type="text"
-                placeholder="Digite o nome para pesquisar na base de dados do RH..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setShowSearchResults(true);
-                }}
-                onFocus={() => setShowSearchResults(true)}
-                className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-700 focus:border-blue-500 focus:ring-0 outline-none transition-all"
-              />
-
-              <AnimatePresence>
-                {showSearchResults && searchTerm.length > 2 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-200 z-[120] overflow-hidden max-h-60 overflow-y-auto"
-                  >
-                    {allDocentes
-                      .filter(
-                        (d) =>
-                          d.tipo === "Docente" &&
-                          d.nome
-                            .toLowerCase()
-                            .includes(searchTerm.toLowerCase()),
-                      )
-                      .map((doc) => (
-                        <button
-                          key={doc.id}
-                          onClick={() => handleSelectDocente(doc)}
-                          className="w-full px-6 py-4 text-left hover:bg-blue-50 flex items-center justify-between group border-b border-slate-50 last:border-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-[10px] font-black">
-                              {(doc.nome || "S N")
-                                .split(" ")
-                                .filter(Boolean)
-                                .map((n) => n[0])
-                                .join("")
-                                .slice(0, 2) || "S/N"}
-                            </div>
-                            <span className="font-bold text-slate-800">
-                              {doc.nome}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-black text-slate-400 tracking-widest group-hover:text-blue-600 transition-colors">
-                            Selecionar
-                          </span>
-                        </button>
-                      ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2 font-medium italic">
-              * Se o docente já existir no sistema, selecione-o para carregar
-              todos os dados automaticamente.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-            {page === 1 && (
-              <>
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-red-600 border-b border-red-200 mb-1">
-                      Nº Processo / ID Único
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full py-1 px-2 outline-none focus:ring-0 text-base font-mono font-bold text-red-700 bg-red-50/70 border border-red-200 rounded"
-                      value={numeroProcesso}
-                      onChange={(e) => setNumeroProcesso(e.target.value)}
-                      placeholder="Preenchido Automaticamente..."
-                      disabled={isDCC}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                      Nome Completo
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full py-1 px-0 outline-none focus:ring-0 text-base"
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      placeholder="Digite o nome completo"
-                      disabled={isDCC}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Género
-                  </label>
-                  <select
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                    value={genero}
-                    onChange={(e) => setGenero(e.target.value)}
-                    disabled={isDCC}
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="M">Masculino</option>
-                    <option value="F">Feminino</option>
-                  </select>
-                </div>
-                {!(
-                  categoria === "Administrador" ||
-                  categoria === "Proprietário" ||
-                  cargo === "Administrador" ||
-                  cargo === "Proprietário"
-                ) && (
-                  <div>
-                    <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                      NUIT
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full py-1 px-0 outline-none focus:ring-0 text-base"
-                      value={nuit}
-                      onChange={(e) =>
-                        setNuit(e.target.value.replace(/\D/g, "").slice(0, 9))
-                      }
-                      maxLength={9}
-                      placeholder="Digite os 9 dígitos"
-                      disabled={isDCC}
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Nº B.I.
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base"
-                    value={numeroBI}
-                    onChange={(e) => setNumeroBI(e.target.value)}
-                    disabled={isDCC}
-                  />
-                </div>
-              </>
-            )}
-
-            {page === 2 && (
-              <>
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    País
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base"
-                    value={nacionalidade}
-                    onChange={(e) => setNacionalidade(e.target.value)}
-                    disabled={isDCC}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Província
-                  </label>
-                  <input
-                    type="text"
-                    list="provincia-list"
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                    value={provincia}
-                    onChange={handleProvinciaChange}
-                    placeholder="Selecione ou digite..."
-                    disabled={isDCC}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Distrito
-                  </label>
-                  <input
-                    type="text"
-                    list="distrito-list"
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                    value={distrito}
-                    onChange={(e) => setDistrito(e.target.value)}
-                    disabled={!provincia || isDCC}
-                    placeholder="Selecione ou digite..."
-                  />
-                </div>
-              </>
-            )}
-
-            {page === 3 && (
-              <>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Órgão
-                  </label>
-                  <select
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none border-b border-gray-100"
-                    value={unidade}
-                    onChange={(e) => {
-                      setUnidade(e.target.value);
-                      setDirecao("");
-                      setDepartamento("");
-                    }}
-                    disabled={isDCC}
-                  >
-                    <option value="">Selecione o Órgão...</option>
-                    {UNIDADES_ORGANICAS_SISTEMA.map((u) => (
-                      <option key={u.id} value={u.nome}>
-                        {u.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Departamento / Direção
-                  </label>
-                  <select
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none border-b border-gray-100"
-                    value={direcao}
-                    onChange={(e) => {
-                      setDirecao(e.target.value);
-                      setDepartamento("");
-                    }}
-                    disabled={!unidade || isDCC}
-                  >
-                    <option value="">Selecione o Departamento...</option>
-                    {UNIDADES_ORGANICAS_SISTEMA.find((u) => u.nome === unidade)?.direcoes.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Departamento de Afetação
-                  </label>
-                  <select
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none border-b border-gray-100"
-                    value={departamento}
-                    onChange={(e) => setDepartamento(e.target.value)}
-                    disabled={!direcao || isDCC}
-                  >
-                    <option value="">Selecione o Departamento...</option>
-                    {(DEPARTAMENTOS[direcao] || []).map((dep) => (
-                      <option key={dep} value={dep}>
-                        {dep}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Nível Académico
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={nivelAcademico}
-                onChange={(e) => setNivelAcademico(e.target.value)}
-              >
-                <option value="">Selecione o nível...</option>
-                {NIVEIS_ACADEMICOS.map((nivel) => (
-                  <option key={nivel} value={nivel}>
-                    {nivel}
-                  </option>
-                ))}
-                {nivelAcademico && !NIVEIS_ACADEMICOS.includes(nivelAcademico) && (
-                  <option value={nivelAcademico}>{nivelAcademico}</option>
-                )}
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Área De Formação
-              </label>
-              <input
-                type="text"
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base"
-                value={areaFormacao}
-                onChange={(e) => setAreaFormacao(e.target.value)}
-                placeholder="Digite a área de formação"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Categoria
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={categoria}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCategoria(val);
-                  if (CATEGORIAS_DOCENTES.includes(val) && val !== "Assistente") {
-                    setCarreira("Docente");
-                  } else if (["Técnico Superior", "Técnico Profissional", "Técnico"].includes(val)) {
-                    setCarreira("CTA");
-                  } else if (val === "Assistente" && !carreira) {
-                    setCarreira("Docente");
-                  } else {
-                    const res = classifyTipo({ categoria: val, carreira });
-                    setCarreira(res);
-                  }
-                }}
-              >
-                <option value="">Selecione...</option>
-                {carreira === "Docente" ? (
-                  <>
-                    <optgroup label="Docentes">
-                      {CATEGORIAS_DOCENTES.map((c) => (
-                        <option key={`doc-${c}`} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </>
-                ) : carreira === "CTA" ? (
-                  <>
-                    <optgroup label="CTAA">
-                      {CATEGORIAS_CTAA.map((c) => (
-                        <option key={`cta-${c}`} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </>
-                ) : (
-                  <>
-                    <optgroup label="Docentes">
-                      {CATEGORIAS_DOCENTES.map((c) => (
-                        <option key={`all-doc-${c}`} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="CTAA">
-                      {CATEGORIAS_CTAA.map((c) => (
-                        <option key={`all-cta-${c}`} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Outras">
-                      <option value="Proprietário e Programador do Sistema">
-                        Proprietário e Programador do Sistema
-                      </option>
-                    </optgroup>
-                  </>
-                )}
-                {categoria &&
-                  !CATEGORIAS_DOCENTES.includes(categoria) &&
-                  !CATEGORIAS_CTAA.includes(categoria) &&
-                  categoria !== "Proprietário e Programador do Sistema" && (
-                    <option value={categoria}>{categoria}</option>
-                  )}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Tipo De Contrato
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={tipoContrato}
-                onChange={(e) => setTipoContrato(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                <option value="Tempo inteiro">Tempo inteiro</option>
-                <option value="Tempo Parcial">Tempo Parcial</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Vínculo Contractual
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={vinculoContractual}
-                onChange={(e) => setVinculoContractual(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                <option value="Pertence ao quadro">Pertence ao quadro</option>
-                <option value="Não pertence ao quadro">
-                  Não pertence ao quadro
-                </option>
-                {vinculoContractual &&
-                  ![
-                    "",
-                    "Pertence ao quadro",
-                    "Não pertence ao quadro",
-                  ].includes(vinculoContractual) && (
-                    <option value={vinculoContractual}>
-                      {vinculoContractual}
-                    </option>
-                  )}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Carreira
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={carreira}
-                onChange={(e) => setCarreira(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                <option value="Docente">Docente</option>
-                <option value="CTA">CTA</option>
-                <option value="Investigador">Investigador</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                EFETIVO?
-              </label>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  checked={efetivo}
-                  onChange={(e) => setEfetivo(e.target.checked)}
-                />
-                <span className="text-sm text-gray-700">
-                  {efetivo ? "Sim" : "Não"}
-                </span>
-              </div>
-            </div>
-
-
-
-            {departamento &&
-            [
-              "Departamento de Engenharia Eletrotécnica",
-              "Departamento de Engenharia de Construção Civil",
-              "Departamento de Engenharia de Construção Mecânica",
-            ].includes(departamento) ? (
-              <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-black border-b border-black mb-2">
-                  Afetação por Curso (Até 4)
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[0, 1, 2, 3].map((idx) => (
-                    <div key={idx} className="flex flex-col">
-                      <label className="text-[10px] text-gray-400 font-bold  tracking-widest">
-                        Curso {idx + 1}
-                      </label>
-                      <select
-                        className="w-full py-1 px-0 outline-none focus:ring-0 text-sm bg-transparent appearance-none border-b border-gray-100"
-                        value={cursos[idx]}
-                        onChange={(e) => {
-                          const newCursos = [...cursos];
-                          newCursos[idx] = e.target.value;
-                          setCursos(newCursos);
-                          if (idx === 0) setCurso(e.target.value);
-                        }}
-                      >
-                        <option value="">Selecione o Curso {idx + 1}...</option>
-                        {CURSOS[departamento]?.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Tipo de Acesso
-                  </label>
-                  <select
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none border-b border-gray-100"
-                    value={tipoAcesso}
-                    onChange={(e) =>
-                      setTipoAcesso(e.target.value as "Chefe" | "Técnico")
-                    }
-                  >
-                    <option value="Chefe">Chefe do Departamento</option>
-                    <option value="Técnico">Técnico</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                    Repartição
-                  </label>
-                  <input
-                    type="text"
-                    list="reparticao-list"
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                    value={reparticao}
-                    onChange={handleReparticaoChange}
-                    placeholder="Selecione ou digite..."
-                  />
-                  <datalist id="reparticao-list">
-                    {Array.from(
-                      new Set(
-                        departamento &&
-                          REPARTICOES[departamento as keyof typeof REPARTICOES]
-                          ? REPARTICOES[
-                              departamento as keyof typeof REPARTICOES
-                            ]
-                          : Object.values(REPARTICOES).flat(),
-                      ),
-                    ).map((r, idx) => (
-                      <option key={`${r}-${idx}`} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </datalist>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-black border-b border-black mb-1 tracking-tight">
-                    Setor
-                  </label>
-                  <input
-                    type="text"
-                    list="sector-list"
-                    className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                    value={sector}
-                    onChange={(e) => setSector(e.target.value)}
-                    placeholder="Selecione ou digite..."
-                  />
-                  <datalist id="sector-list">
-                    {reparticao &&
-                      SETORES[reparticao]?.map((s) => (
-                        <option key={s + "-" + Math.random()} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                  </datalist>
-                </div>
-
-                {tipoAcesso === "Técnico" &&
-                  departamento &&
-                  availableSectors.length > 0 && (
-                    <div className="mt-4 md:col-span-2">
-                      <label className="block text-sm font-bold text-black border-b border-black mb-2">
-                        Setores Atribuídos (Múltipla Seleção)
-                      </label>
-                      <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                        {availableSectors.map((s) => (
-                          <label
-                            key={s + "-" + Math.random()}
-                            className="flex items-center gap-2 text-sm text-gray-700"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={setoresAtribuidos.includes(s)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSetoresAtribuidos([
-                                    ...setoresAtribuidos,
-                                    s,
-                                  ]);
-                                } else {
-                                  setSetoresAtribuidos(
-                                    setoresAtribuidos.filter(
-                                      (item) => item !== s,
-                                    ),
-                                  );
-                                }
-                              }}
-                            />
-                            {s}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-              </>
-            )}
-
-            {(carreira === "Docente" && carreira !== "CTA" && carreira !== "Investigador") && (
-              <div className="md:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-dotted border-slate-300">
-                <label className="block text-sm font-bold text-black border-b border-black mb-3">
-                  Disciplinas Leccionadas (Até 4)
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[0, 1, 2, 3].map((idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-slate-300">
-                        {idx + 1}.
-                      </span>
-                      <input
-                        type="text"
-                        className="flex-grow py-1 px-0 outline-none focus:ring-0 text-sm border-b border-slate-200 bg-transparent"
-                        value={disciplinas[idx] || ""}
-                        onChange={(e) => {
-                          const newD = [...disciplinas];
-                          newD[idx] = e.target.value;
-                          setDisciplinas(newD);
-                        }}
-                        placeholder={`Nome da disciplina ${idx + 1}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Função
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={funcao}
-                onChange={(e) => setFuncao(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                {LISTA_FUNCOES.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1 text-blue-800">
-                CARGO / CHEFIA
-              </label>
-              <input
-                type="text"
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base font-bold text-blue-800 placeholder:font-normal"
-                value={cargo}
-                onChange={(e) => setCargo(e.target.value)}
-                placeholder="Digite o cargo ou chefia"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Cargo De Chefia
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none"
-                value={cargoChefia}
-                onChange={(e) => handleCargoChefiaChange(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                {CARGOS_CHEFIA_LIST.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1">
-                Estado do Colaborador
-              </label>
-              <select
-                className={`w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent font-[900] ${["Falecido", "Reformado", "Transferido"].includes(estado || "Ativo") ? "text-red-600 font-[900]" : estado === "Ativo" || !estado ? "text-green-600 font-[900]" : "text-blue-600"}`}
-                value={estado}
-                onChange={(e) => setEstado(e.target.value)}
-              >
-                <option value="Ativo" className="text-green-600 font-bold">
-                  Ativo
-                </option>
-                <option value="Em Formação" className="text-blue-600 font-bold">
-                  Em Formação
-                </option>
-                <option value="Inativo" className="text-black">
-                  Inativo
-                </option>
-                <option value="Aposentado" className="text-black">
-                  Aposentado
-                </option>
-                <option value="Licença" className="text-black">
-                  Licença
-                </option>
-                <option value="Reformado" className="text-red-600 font-bold">
-                  Reformado
-                </option>
-                <option value="Transferido" className="text-red-600 font-bold">
-                  Transferido
-                </option>
-                <option value="Falecido" className="text-red-600 font-bold">
-                  Falecido
-                </option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-black border-b border-black mb-1 text-red-600">
-                Estado De Mandato
-              </label>
-              <select
-                className="w-full py-1 px-0 outline-none focus:ring-0 text-base bg-transparent appearance-none font-bold text-red-600"
-                value={estadoMandato}
-                onChange={handleEstadoMandatoChange}
-              >
-                <option value="Em Actividade">Em Actividade</option>
-                <option value="Cessado">Cessado</option>
-                <option value="Despromovido">Despromovido</option>
-              </select>
-            </div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight font-serif mb-1">
+            Novo Registo
+          </h2>
+          <div className="flex items-center gap-3 w-full justify-center max-w-xs mx-auto">
+            <div className="h-[1px] bg-slate-200 flex-grow"></div>
+            <span className="text-xs text-slate-400 uppercase tracking-[0.2em] font-medium font-serif">
+              Formulário de Ingressão
+            </span>
+            <div className="h-[1px] bg-slate-200 flex-grow"></div>
           </div>
-
-          {renderPagination()}
         </div>
+
+        {/* Existing Search pre-filler to help with loading standard records quickly */}
+        <div className="mx-8 mt-6 bg-slate-50/50 p-4 rounded-2xl border border-slate-200/60">
+          <label className="block text-[10px] font-black text-blue-600 tracking-widest uppercase mb-1.5">
+            Pesquisar Registo de Apoio para Pré-carregamento
+          </label>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Digite o nome completo do docente/funcionário para puxar dados antigos..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowSearchResults(true);
+              }}
+              onFocus={() => setShowSearchResults(true)}
+              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:border-blue-500 focus:outline-none transition-all"
+            />
+            {showSearchResults && searchTerm.length > 2 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden max-h-48 overflow-y-auto">
+                {allDocentes
+                  .filter((d) => d.nome?.toLowerCase().includes(searchTerm.toLowerCase()))
+                  .map((doc) => (
+                    <button
+                      key={doc.id || Math.random()}
+                      type="button"
+                      onClick={() => handleSelectDocente(doc)}
+                      className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-slate-50 last:border-0"
+                    >
+                      <span className="font-bold text-slate-800 text-xs">{doc.nome}</span>
+                      <span className="text-[10px] font-black text-blue-600 tracking-widest uppercase">Selecionar</span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Form elements mapped exactly as requested in screenshots */}
+        <form onSubmit={handleLocalSubmit} className="p-8 space-y-10">
+
+          {/* SECTION 1: Dados Pessoais */}
+          <div className="relative border border-slate-900 rounded-[24px] p-6 pt-10 bg-white">
+            <div className="absolute -top-3 left-6 bg-white px-2 flex items-center gap-2">
+              <div className="w-[4px] h-[16px] bg-blue-600 rounded-full"></div>
+              <span className="font-extrabold text-slate-800 text-[11px] uppercase tracking-widest">
+                Dados Pessoais
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-1">
+                <div className="flex flex-col gap-1 w-full">
+                  <label className="text-[11px] font-black tracking-tight text-red-500">
+                    Nº Processo / ID Único
+                  </label>
+                  <input
+                    type="text"
+                    value={numeroProcesso}
+                    onChange={(e) => setNumeroProcesso(e.target.value)}
+                    placeholder="Auto-gerado..."
+                    disabled={isDCC}
+                    className="bg-red-50/20 border border-red-200 rounded-[14px] px-4 py-3 text-red-700 text-sm focus:outline-none focus:border-red-400 transition-all w-full font-black disabled:opacity-75"
+                  />
+                </div>
+              </div>
+
+              <InputGroup
+                label="Nome Completo"
+                value={nome}
+                onChange={(e: any) => setNome(e.target.value)}
+                placeholder="Digite o nome completo"
+                className="md:col-span-3"
+                required
+              />
+
+              <SelectGroup
+                label="Género"
+                value={genero}
+                onChange={(e: any) => setGenero(e.target.value)}
+                placeholder="Seleciona..."
+                options={[
+                  { value: "M", label: "Masculino" },
+                  { value: "F", label: "Feminino" },
+                ]}
+                required
+              />
+
+              <InputGroup
+                label="NUIT"
+                value={nuit}
+                onChange={(e: any) => setNuit(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                placeholder="EX: 123456789"
+                maxLength={9}
+              />
+
+              <InputGroup
+                label="Email Pessoal"
+                value={email}
+                onChange={(e: any) => setEmail(e.target.value)}
+                placeholder="EX: joao@gmail.com"
+                type="email"
+              />
+
+              <InputGroup
+                label="Telefone"
+                value={telefone}
+                onChange={(e: any) => setTelefone(e.target.value)}
+                placeholder="EX: +258 84 123 4567"
+              />
+
+              <SelectGroup
+                label="Estado Civil"
+                value={estadoCivil}
+                onChange={(e: any) => setEstadoCivil(e.target.value)}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Solteiro/a", label: "Solteiro/a" },
+                  { value: "Casado/a", label: "Casado/a" },
+                  { value: "Divorciado/a", label: "Divorciado/a" },
+                  { value: "Viúvo/a", label: "Viúvo/a" },
+                ]}
+              />
+
+              <InputGroup
+                label="Nome do Pai"
+                value={nomePai}
+                onChange={(e: any) => setNomePai(e.target.value)}
+                placeholder="Nome completo do pai"
+                className="md:col-span-1.5"
+              />
+
+              <InputGroup
+                label="Nome da Mãe"
+                value={nomeMae}
+                onChange={(e: any) => setNomeMae(e.target.value)}
+                placeholder="Nome completo da mãe"
+                className="md:col-span-1.5"
+              />
+
+              <InputGroup
+                label="BI /"
+                value={numeroBI}
+                onChange={(e: any) => setNumeroBI(e.target.value)}
+                placeholder="EX: 120101920192A"
+              />
+
+              <InputGroup
+                label="Emitido em:"
+                value={emitidoEm}
+                onChange={(e: any) => setEmitidoEm(e.target.value)}
+                placeholder="EX: Maputo"
+              />
+
+              <InputGroup
+                label="Data de Emissão (BI)"
+                value={dataEmissaoBI}
+                onChange={(e: any) => setDataEmissaoBI(e.target.value)}
+                type="date"
+              />
+            </div>
+          </div>
+
+
+          {/* SECTION 2: Local de Nascimento */}
+          <div className="relative border border-slate-900 rounded-[24px] p-6 pt-10 bg-white">
+            <div className="absolute -top-3 left-6 bg-white px-2 flex items-center gap-2">
+              <div className="w-[4px] h-[16px] bg-blue-600 rounded-full"></div>
+              <span className="font-extrabold text-slate-800 text-[11px] uppercase tracking-widest">
+                Local de Nascimento
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <InputGroup
+                label="Nacionalidade"
+                value={nacionalidade}
+                onChange={(e: any) => setNacionalidade(e.target.value)}
+                placeholder="EX: Moçambicana"
+              />
+
+              <SelectGroup
+                label="Província de Nascimento"
+                value={provincia}
+                onChange={(e: any) => {
+                  setProvincia(e.target.value);
+                  setDistrito("");
+                }}
+                placeholder="Selecione..."
+                options={Object.keys(PROVINCIAS_DISTRITOS)}
+              />
+
+              <SelectGroup
+                label="Distrito"
+                value={distrito}
+                onChange={(e: any) => setDistrito(e.target.value)}
+                placeholder="Selecione..."
+                options={provincia ? (PROVINCIAS_DISTRITOS[provincia] || []) : []}
+                disabled={!provincia}
+              />
+
+              <InputGroup
+                label="Data de Nascimento"
+                value={dataNascimento}
+                onChange={(e: any) => setDataNascimento(e.target.value)}
+                type="date"
+              />
+
+              <InputGroup
+                label="Morada (Província, Distrito, Bairro)"
+                value={morada}
+                onChange={(e: any) => setMorada(e.target.value)}
+                placeholder="Morada atual do colaborador"
+                className="md:col-span-2"
+              />
+
+              <InputGroup
+                label="Bairro"
+                value={bairro}
+                onChange={(e: any) => setBairro(e.target.value)}
+                placeholder="Bairro residencial"
+              />
+
+              <InputGroup
+                label="Distrito (Residência)"
+                value={distritoResidencia}
+                onChange={(e: any) => setDistritoResidencia(e.target.value)}
+                placeholder="Distrito de residência"
+              />
+
+              <InputGroup
+                label="Célula"
+                value={celula}
+                onChange={(e: any) => setCelula(e.target.value)}
+                placeholder="Célula"
+              />
+
+              <InputGroup
+                label="Quarteirão No"
+                value={quarteiraoNo}
+                onChange={(e: any) => setQuarteiraoNo(e.target.value)}
+                placeholder="EX: 12"
+              />
+
+              <InputGroup
+                label="Casa No"
+                value={casaNo}
+                onChange={(e: any) => setCasaNo(e.target.value)}
+                placeholder="EX: 45"
+              />
+
+              <InputGroup
+                label="Nº de Filhos"
+                value={numeroFilhos}
+                onChange={(e: any) => setNumeroFilhos(Number(e.target.value))}
+                type="number"
+              />
+            </div>
+          </div>
+
+
+          {/* SECTION 3: Dados Profissionais & Formação Académica */}
+          <div className="relative border border-slate-900 rounded-[24px] p-6 pt-10 bg-white">
+            <div className="absolute -top-3 left-6 bg-white px-2 flex items-center gap-2">
+              <div className="w-[4px] h-[16px] bg-blue-600 rounded-full"></div>
+              <span className="font-extrabold text-slate-800 text-[11px] uppercase tracking-widest">
+                Dados Profissionais & Formação Académica
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <SelectGroup
+                label="Carreira"
+                value={carreira}
+                onChange={(e: any) => {
+                  setCarreira(e.target.value);
+                  setCategoria("");
+                }}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Docente", label: "Docente" },
+                  { value: "CTA", label: "CTA" },
+                  { value: "Investigador", label: "Investigador" },
+                ]}
+                className="md:col-span-1.3"
+              />
+
+              <SelectGroup
+                label="Categoria"
+                value={categoria}
+                onChange={(e: any) => setCategoria(e.target.value)}
+                placeholder="Selecione..."
+                options={
+                  carreira === "Docente"
+                    ? CATEGORIAS_DOCENTES
+                    : carreira === "CTA"
+                    ? CATEGORIAS_CTAA
+                    : [...CATEGORIAS_DOCENTES, ...CATEGORIAS_CTAA]
+                }
+                className="md:col-span-1.3"
+              />
+
+              <SelectGroup
+                label="Função"
+                value={funcao}
+                onChange={(e: any) => setFuncao(e.target.value)}
+                placeholder="Selecione..."
+                options={LISTA_FUNCOES}
+                className="md:col-span-1.4"
+              />
+
+              <SelectGroup
+                label="Efetivo"
+                value={efetivo}
+                onChange={(e: any) => setEfetivo(e.target.value)}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Sim", label: "Sim" },
+                  { value: "Não", label: "Não" },
+                ]}
+              />
+
+              <SelectGroup
+                label="Tipo de Contrato"
+                value={tipoContrato}
+                onChange={(e: any) => setTipoContrato(e.target.value)}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Tempo inteiro", label: "Tempo inteiro" },
+                  { value: "Tempo Parcial", label: "Tempo Parcial" },
+                ]}
+              />
+
+              <SelectGroup
+                label="Vínculo Contratual"
+                value={vinculoContractual}
+                onChange={(e: any) => setVinculoContractual(e.target.value)}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Pertence ao quadro", label: "Pertence ao quadro" },
+                  { value: "Não pertence ao quadro", label: "Não pertence ao quadro" },
+                ]}
+              />
+
+              <InputGroup
+                label="Data de Admissão"
+                value={dataAdmissao}
+                onChange={(e: any) => setDataAdmissao(e.target.value)}
+                type="date"
+              />
+
+              <SelectGroup
+                label="Nível Académico"
+                value={nivelAcademico}
+                onChange={(e: any) => setNivelAcademico(e.target.value)}
+                placeholder="Selecione..."
+                options={NIVEIS_ACADEMICOS}
+                className="md:col-span-2"
+              />
+
+              <InputGroup
+                label="Área de Formação"
+                value={areaFormacao}
+                onChange={(e: any) => setAreaFormacao(e.target.value)}
+                placeholder="Digite a área de formação"
+                className="md:col-span-2"
+              />
+
+              {/* Disciplinas sub-section */}
+              <div className="md:col-span-4 mt-2">
+                <span className="text-[10px] font-black text-blue-900 tracking-wider uppercase block mb-3">
+                  Disciplinas Leccionadas (Até 4)
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[0, 1, 2, 3].map((idx) => (
+                    <InputGroup
+                      key={idx}
+                      label={`Disciplina ${idx + 1}`}
+                      value={disciplinas[idx] || ""}
+                      onChange={(e: any) => {
+                        const newD = [...disciplinas];
+                        newD[idx] = e.target.value;
+                        setDisciplinas(newD);
+                      }}
+                      placeholder={`Disciplina ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          {/* SECTION 4: Alocação Institucional / Cargo de Chefia e Confianças */}
+          <div className="relative border border-slate-900 rounded-[24px] p-6 pt-10 bg-white">
+            <div className="absolute -top-3 left-6 bg-white px-2 flex items-center gap-2">
+              <div className="w-[4px] h-[16px] bg-blue-600 rounded-full"></div>
+              <span className="font-extrabold text-slate-800 text-[11px] uppercase tracking-widest">
+                Alocação Institucional / Cargo de Chefia e Confianças
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <SelectGroup
+                label="Órgão"
+                value={unidade}
+                onChange={(e: any) => {
+                  setUnidade(e.target.value);
+                  setDirecao("");
+                  setDepartamento("");
+                  setReparticao("");
+                  setSector("");
+                }}
+                placeholder="Selecione..."
+                options={UNIDADES_ORGANICAS_SISTEMA.map((u) => u.nome)}
+                required
+              />
+
+              <SelectGroup
+                label="Direção"
+                value={direcao}
+                onChange={(e: any) => {
+                  setDirecao(e.target.value);
+                  setDepartamento("");
+                  setReparticao("");
+                  setSector("");
+                }}
+                placeholder="Selecione..."
+                options={
+                  unidade
+                    ? UNIDADES_ORGANICAS_SISTEMA.find((u) => u.nome === unidade)?.direcoes || []
+                    : []
+                }
+                disabled={!unidade}
+              />
+
+              <SelectGroup
+                label="Departamento"
+                value={departamento}
+                onChange={(e: any) => {
+                  setDepartamento(e.target.value);
+                  setReparticao("");
+                  setSector("");
+                }}
+                placeholder="Selecione..."
+                options={direcao ? DEPARTAMENTOS[direcao] || [] : []}
+                disabled={!direcao}
+              />
+
+              <SelectGroup
+                label="Repartição / Secção"
+                value={reparticao}
+                onChange={(e: any) => {
+                  setReparticao(e.target.value);
+                  setSector("");
+                }}
+                placeholder="Selecione..."
+                options={departamento ? REPARTICOES[departamento] || [] : []}
+                disabled={!departamento}
+              />
+
+              <SelectGroup
+                label="Secção"
+                value={sector}
+                onChange={(e: any) => setSector(e.target.value)}
+                placeholder="Selecione..."
+                options={reparticao ? SETORES[reparticao] || [] : []}
+                disabled={!reparticao}
+              />
+
+              <SelectGroup
+                label="Cargo"
+                value={cargo}
+                onChange={(e: any) => setCargo(e.target.value)}
+                placeholder="Selecione..."
+                options={CARGOS_CHEFIA_LIST}
+              />
+
+              <InputGroup
+                label="Data da Nomeação"
+                value={dataNomeacao}
+                onChange={(e: any) => setDataNomeacao(e.target.value)}
+                type="date"
+              />
+
+              <InputGroup
+                label="Data da Desnomeação"
+                value={dataDesnomeacao}
+                onChange={(e: any) => setDataDesnomeacao(e.target.value)}
+                type="date"
+              />
+
+              {/* Status selectors custom styled matching the images colors */}
+              <SelectGroup
+                label="Estado do Mandato"
+                value={estadoMandato}
+                onChange={(e: any) => setEstadoMandato(e.target.value)}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Em Actividade", label: "Em Atividade" },
+                  { value: "Cessado", label: "Cessado" },
+                  { value: "Despromovido", label: "Despromovido" },
+                ]}
+                borderClassName="border-red-400"
+                textClassName="text-red-600 font-extrabold"
+              />
+
+              <SelectGroup
+                label="Estado do Colaborador"
+                value={estado}
+                onChange={(e: any) => setEstado(e.target.value)}
+                placeholder="Selecione..."
+                options={[
+                  { value: "Ativo", label: "Ativo" },
+                  { value: "Em Formação", label: "Em Formação" },
+                  { value: "Inativo", label: "Inativo" },
+                  { value: "Aposentado", label: "Aposentado" },
+                  { value: "Licença", label: "Licença" },
+                  { value: "Reformado", label: "Reformado" },
+                  { value: "Transferido", label: "Transferido" },
+                  { value: "Falecido", label: "Falecido" },
+                ]}
+                borderClassName="border-emerald-400"
+                textClassName="text-emerald-600 font-extrabold"
+              />
+            </div>
+          </div>
+
+
+          {/* Footer Action Buttons exactly matching the layout and labels in the image */}
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold px-8 py-3 rounded-xl transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-8 py-3 rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? "A guardar..." : "Guardar Alterações"}
+            </button>
+          </div>
+
+        </form>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import {
   ArrowLeft,
   Inbox,
@@ -25,7 +25,7 @@ import LoadingSpinner from "../bloco1_apresentacao/LoadingSpinner";
 import { InstitutionalHeader } from "../../components/InstitutionalHeader";
 import FormularioExpediente from "../bloco6_documentos/FormularioExpediente";
 import GerarDespachoSection from "../bloco5_sistema/GerarDespachoSection";
-import GestaoExpedienteHistoricoView from "./GestaoExpedienteHistoricoView";
+const GestaoExpedienteHistoricoView = lazy(() => import("./GestaoExpedienteHistoricoView"));
 import { firestoreService } from "../../lib/firestoreService";
 
 export default function GestaoDocumentosView({

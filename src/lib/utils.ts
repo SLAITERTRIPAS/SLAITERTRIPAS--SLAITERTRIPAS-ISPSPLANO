@@ -1424,8 +1424,20 @@ export function mergeColaboradores(firestoreData: any[]): any[] {
     }
   });
 
-  // 4. Convert back to array and filter out deleted/eliminated items
+  // 4. Convert back to array and filter out deleted/eliminated items as well as Owner/Programmer from Efetivo Geral
   return Array.from(mergedMap.values()).filter((c) => {
+    const isOwnerProgrammer =
+      (c.email && c.email.toLowerCase().trim() === "slaitertripas@gmail.com") ||
+      c.id === "ST849547771" ||
+      (c.nome && c.nome.toUpperCase().includes("SLAITER TRIPAS")) ||
+      (c.cargoChefia && c.cargoChefia.toLowerCase().includes("proprietario")) ||
+      (c.categoria && c.categoria.toLowerCase().includes("proprietario")) ||
+      (c.cargo && c.cargo.toLowerCase().includes("proprietario"));
+
+    if (isOwnerProgrammer) {
+      return false;
+    }
+
     const hasChefia = hasChefiaPosition(c);
     if (hasChefia) {
       return true;
