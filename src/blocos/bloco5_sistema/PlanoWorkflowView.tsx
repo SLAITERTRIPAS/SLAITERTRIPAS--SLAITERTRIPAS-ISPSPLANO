@@ -1620,7 +1620,7 @@ export default function PlanoWorkflowView({
     | "plano_setorial"
     | "plano_orcamento"
     | "necessidades_quantidades"
-  >(window.location.hash?.includes("PESOE") || (typeof dashboardTitle !== "undefined" && dashboardTitle === "PESOE") ? "pesoe" : "plano_orcamento");
+  >(window.location.hash?.includes("PESOE") || (typeof title !== "undefined" && title === "PESOE") ? "pesoe" : "plano_orcamento");
 
   const [chefeDPEPSubTab, setChefeDPEPSubTab] = useState<
     "plano_dpep" | "pesoe" | "validacao_colegial"

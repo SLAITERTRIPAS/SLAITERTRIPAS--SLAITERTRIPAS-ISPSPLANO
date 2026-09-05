@@ -1300,7 +1300,6 @@ export default function SistemaView({
           />
         );
       case "Log de Actividade":
-      case "Log de Actividade":
         return <RecentActivityLog colaboradores={colaboradores} />;
       case "Atualização":
         return (

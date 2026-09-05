@@ -12,6 +12,25 @@ export interface ErrorBoundaryState {
   errorCount: number;
 }
 
+const isIgnorableSystemError = (err: any) => {
+  const m = String(err?.message || err?.reason || err?.stack || err || "").toLowerCase();
+  return (
+    m.includes("@firebase/firestore") ||
+    m.includes("could not reach cloud firestore backend") ||
+    m.includes("backend didn't respond within 10 seconds") ||
+    m.includes("backend didn't respond") ||
+    m.includes("internal assertion failed") ||
+    m.includes("unexpected state") ||
+    m.includes("client will operate in offline mode") ||
+    m.includes("quota limit exceeded") ||
+    m.includes("free daily read units") ||
+    m.includes("resource-exhausted") ||
+    m.includes("resource_exhausted") ||
+    m.includes("quota exceeded") ||
+    m.includes("firestore (11.")
+  );
+};
+
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   private resetTimeoutId: any = null;
 
@@ -25,10 +44,16 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    if (isIgnorableSystemError(error)) {
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isIgnorableSystemError(error)) {
+      return;
+    }
     console.error(
       "ErrorBoundary apanhou um erro de renderização:",
       error?.message || String(error),
