@@ -183,27 +183,51 @@ export function openPrintDocumentWindow(options: PrintDocumentOptions) {
     contentHtml.includes("Instituto Superior Politécnico") ||
     contentHtml.includes("lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad");
 
+  const cleanVal = (val?: string) => {
+    if (!val) return '';
+    const trimmed = String(val).trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === 'songo' || lower === 'isps' || lower === 'null' || lower === 'undefined' || lower === '-' || lower === 'n/a') return '';
+    return trimmed;
+  };
+
+  const cleanOrgao = cleanVal(orgao);
+  const cleanDirecao = cleanVal(direcao);
+  const cleanDivisao = cleanVal(divisao);
+  const cleanDepartamento = cleanVal(departamento);
+  const cleanReparticao = cleanVal(reparticao);
+  const cleanSetor = cleanVal(setor);
+
   const resolvedOrgao = (() => {
-    if (orgao && orgao.trim() && orgao.toUpperCase() !== "UNIDADE ORGÂNICA") {
-      const u = orgao;
-      if (u.toUpperCase().includes("SERVIÇO") || u.toUpperCase().includes("SERVICO")) return "Serviços Centrais";
-      if (u.toUpperCase().includes("DIREÇÃO E GESTÃO") || u.toUpperCase().includes("DIRECAO E GESTAO")) return "Órgão de Direção e Gestão";
-      return u;
+    const allText = `${cleanOrgao} ${cleanDirecao} ${cleanDivisao} ${cleanDepartamento}`.toUpperCase();
+    if (allText.includes("DICOSAFA") || allText.includes("DICOSSER") || allText.includes("SERVIÇOS CENTRAIS") || allText.includes("SERVICOS CENTRAIS") || allText.includes("FINANÇAS") || allText.includes("RECURSOS HUMANOS")) {
+      return "Serviços Centrais";
     }
-    if (direcao) {
-      const d = direcao.toUpperCase();
-      if (d.includes("DICOSAFA") || d.includes("DICOSSER") || d.includes("SERVIÇO")) return "Serviços Centrais";
-      if (d.includes("GABINETE") || d.includes("DIRETOR-GERAL") || d.includes("CONSELHO") || d.includes("GDG")) return "Órgão de Direção e Gestão";
-      if (d.includes("ENGENHARIA") || d.includes("CIE") || d.includes("CENTRO") || d.includes("INCUBACAO")) return "Unidade Orgânica";
+    if (allText.includes("DIVISÃO DE ENGENHARIA") || allText.includes("DIVISAO DE ENGENHARIA") || allText.includes("ENGENHARIA") || allText.includes("CIE") || allText.includes("CENTRO")) {
+      return "Unidade Orgânica";
     }
-    return orgao || "Unidade Orgânica";
+    return "Órgão de Direção e Gestão";
   })();
 
-  const lowestLevelName = [setor, reparticao, departamento, divisao, direcao].filter(Boolean)[0] || resolvedOrgao;
+  const lowestLevelName = [cleanSetor, cleanReparticao, cleanDepartamento, cleanDivisao, cleanDirecao].filter(Boolean)[0] || resolvedOrgao;
   let resolvedTitle = (title || "Plano de Actividade").trim();
   if (resolvedTitle.toUpperCase() === "PLANO DE ATIVIDADE" || resolvedTitle.toUpperCase() === "PLANO DE ATIVIDADES") {
     resolvedTitle = `Plano de Actividade de ${lowestLevelName}`;
   }
+
+  // Determinar cargo correspondente para o documento
+  const cargoCorrespondente = (() => {
+    if (cleanSetor) return "Responsável do Setor";
+    if (cleanReparticao) return "Chefe da Repartição";
+    if (cleanDepartamento) return "Chefe do Departamento";
+    if (cleanDivisao) return "Diretor da Divisão";
+    if (cleanDirecao) {
+      if (cleanDirecao.toLowerCase().includes("gabinete")) return "Chefe do Gabinete";
+      if (cleanDirecao.toLowerCase().includes("divisão") || cleanDirecao.toLowerCase().includes("divisao")) return "Diretor da Divisão";
+      return "Diretor";
+    }
+    return "Chefe do Departamento";
+  })();
 
   const defaultHeader =
     headerHtml !== undefined
@@ -211,32 +235,34 @@ export function openPrintDocumentWindow(options: PrintDocumentOptions) {
       : hasEmbeddedHeader
         ? ""
         : `
-    <div style="text-align: center; border-bottom: 4px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px; font-family: 'Bookman Old Style', 'Bookman', Georgia, serif; width: 100%;">
-      <div style="margin-bottom: 15px; text-align: center; display: flex; justify-content: center; align-items: center; width: 100%;">
-        <img src="https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad" alt="Logo Songo" style="height: 100px; object-fit: contain; margin: 0 auto; display: block;" />
+    <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; font-family: 'Bookman Old Style', 'Bookman', Georgia, serif; width: 100%;">
+      <div style="margin-bottom: 12px; text-align: center; display: flex; justify-content: center; align-items: center; width: 100%;">
+        <img src="https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad" alt="Logo ISPS" style="height: 90px; object-fit: contain; margin: 0 auto; display: block;" />
       </div>
-      <h2 style="font-size: 20px; font-weight: 900; margin: 4px 0; color: #0f172a; letter-spacing: -0.5px;">
+      <h2 style="font-size: 22px; font-weight: bold; margin: 2px 0 4px 0; color: #0c2340;">
         Instituto Superior Politécnico de Songo
       </h2>
-      <h3 style="font-size: 13px; font-weight: bold; margin: 2px 0; color: #334155; letter-spacing: 1px;">
+      <h3 style="font-size: 13px; font-weight: 500; margin: 2px 0; color: #0c2340;">
         Província de Tete
       </h3>
-      <h3 style="font-size: 13px; font-weight: bold; margin: 2px 0; color: #334155; letter-spacing: 1px;">
+      <h3 style="font-size: 13px; font-weight: 500; margin: 2px 0; color: #0c2340;">
         Distrito de Cahora-Bassa
       </h3>
       
-      <div style="margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-        ${resolvedOrgao ? `<h4 style="font-size: 14px; font-weight: 900; margin: 2px 0; color: #0f172a;">${resolvedOrgao}</h4>` : ""}
-        ${direcao ? `<h4 style="font-size: 14px; font-weight: bold; margin: 2px 0; color: #1e3a8a;">${direcao}</h4>` : ""}
-        ${divisao ? `<h4 style="font-size: 13px; font-weight: bold; margin: 2px 0; color: #1e3a8a;">${divisao}</h4>` : ""}
-        ${departamento ? `<h4 style="font-size: 13px; font-weight: bold; margin: 2px 0; color: #1e3a8a;">${departamento}</h4>` : ""}
-        ${reparticao || setor ? `<h4 style="font-size: 13px; font-weight: bold; margin: 2px 0; color: #1e3a8a;">${[reparticao, setor].filter(Boolean).join(" - ")}</h4>` : ""}
+      <div style="margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+        <h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #d90429;">${resolvedOrgao}</h4>
+        ${cleanDirecao ? `<h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">${cleanDirecao}</h4>` : `<h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">Gabinete do Diretor-geral</h4>`}
+        ${cleanDivisao ? `<h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">${cleanDivisao}</h4>` : ""}
+        ${cleanDepartamento ? `<h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">${cleanDepartamento.toLowerCase().startsWith("departamento") || cleanDepartamento.toLowerCase().startsWith("unidade") ? cleanDepartamento : `Departamento de ${cleanDepartamento}`}</h4>` : ""}
+        ${cleanReparticao ? `<h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">${cleanReparticao.toLowerCase().startsWith("repartição") || cleanReparticao.toLowerCase().startsWith("reparticao") ? cleanReparticao : `Repartição de ${cleanReparticao}`}</h4>` : ""}
+        ${cleanSetor ? `<h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">${cleanSetor.toLowerCase().startsWith("setor") ? cleanSetor : `Setor de ${cleanSetor}`}</h4>` : ""}
+        <h4 style="font-size: 14px; font-weight: bold; margin: 1px 0; color: #0c2340;">${cargoCorrespondente}</h4>
       </div>
 
-      <h5 style="font-size: 18px; font-weight: 900; margin: 20px auto 0; color: #0f172a; border-top: 3px solid #0f172a; border-bottom: 3px solid #0f172a; padding: 10px 0; width: 90%;">
+      <h5 style="font-size: 17px; font-weight: bold; margin: 18px auto 0; color: #d90429; text-transform: uppercase; width: 95%; letter-spacing: 0.5px;">
         ${resolvedTitle}
       </h5>
-      ${subtitle ? `<p style="font-size: 12px; margin: 8px 0 0 0; color: #64748b; font-style: italic;">${subtitle}</p>` : ""}
+      ${subtitle ? `<p style="font-size: 12px; margin: 6px 0 0 0; color: #475569; font-style: italic;">${subtitle}</p>` : ""}
     </div>
   `;
 

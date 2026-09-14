@@ -2110,13 +2110,14 @@ export default function AcaoOrcamentalView({
   return (
     <div id="acao-orcamental-print-area" className="w-full space-y-6 pb-12 animate-fade-in max-w-7xl mx-auto">
       <InstitutionalHeader
-        direcaoName={user?.direcao || user?.unidadeOrganica || "Direção"}
+        direcaoName={user?.direcao || ""}
         departamentoName={user?.departamento || ""}
         reparticaoName={user?.reparticao || ""}
-        sectorName={user?.setor || user?.cargo || ""}
+        sectorName={user?.setor || ""}
         year={2027}
         isOwner={user?.isOwner}
-        unidadeName={user?.unidade || user?.unidadeOrganica || "Unidade Orgânica"}
+        unidadeName={user?.unidade || user?.unidadeOrganica || ""}
+        user={user}
         title="AÇÃO ORÇAMENTAL & DISTRIBUIÇÃO DE NECESSIDADES"
       />
 

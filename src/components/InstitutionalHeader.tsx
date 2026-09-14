@@ -1,54 +1,116 @@
 import React from 'react';
 import { toTitleCase as tc } from '../lib/utils';
+import { EFETIVO_GERAL_DATA } from '../constants/colaboradoresList';
 
-export function resolveOrgaoName(unidadeName?: any, direcaoName?: any): string {
-  if (unidadeName && String(unidadeName).trim() && unidadeName !== "Unidade Orgânica") {
-    const uUpper = String(unidadeName).toUpperCase().trim();
-    if (uUpper.includes("SERVIÇO") || uUpper.includes("SERVICO") || uUpper === "SC") {
-      return "Serviços Centrais";
+// Remove valores inválidos como "Songo", "ISPS", traços ou valores vazios
+export function cleanHierarchyField(val?: string): string {
+  if (!val) return '';
+  const trimmed = String(val).trim();
+  const lower = trimmed.toLowerCase();
+  if (
+    lower === 'songo' ||
+    lower === 'isps' ||
+    lower === 'null' ||
+    lower === 'undefined' ||
+    lower === '-' ||
+    lower === '--' ||
+    lower === 'n/a'
+  ) {
+    return '';
+  }
+  return trimmed;
+}
+
+// Mapeia com rigor para um dos 3 Órgãos Oficiais do Sistema
+export function resolveOrgaoName(unidadeName?: any, direcaoName?: any, departamentoName?: any): string {
+  const uClean = cleanHierarchyField(String(unidadeName || ''));
+  const dClean = cleanHierarchyField(String(direcaoName || ''));
+  const depClean = cleanHierarchyField(String(departamentoName || ''));
+  const allText = `${uClean} ${dClean} ${depClean}`.toUpperCase();
+
+  // 1. Verificação explícita em unidadeName
+  if (uClean) {
+    const uUpper = uClean.toUpperCase();
+    if (uUpper.includes('SERVIÇOS CENTRAIS') || uUpper.includes('SERVICOS CENTRAIS') || uUpper === 'SC') {
+      return 'Serviços Centrais';
     }
-    if (uUpper.includes("DIREÇÃO E GESTÃO") || uUpper.includes("DIRECAO E GESTAO") || uUpper === "ODG") {
-      return "Órgão de Direção e Gestão";
+    if (
+      uUpper.includes('DIREÇÃO E GESTÃO') ||
+      uUpper.includes('DIRECAO E GESTAO') ||
+      uUpper.includes('DIREÇÃO E GESTAO') ||
+      uUpper.includes('DIRECAO E GESTÃO') ||
+      uUpper === 'ODG' ||
+      uUpper === 'ÓRGÃO' ||
+      uUpper === 'ORGAO'
+    ) {
+      return 'Órgão de Direção e Gestão';
     }
-    if (uUpper.includes("ORGÂNICA") || uUpper.includes("ORGANICA") || uUpper === "UO") {
-      return "Unidade Orgânica";
+    if (uUpper === 'UNIDADE ORGÂNICA' || uUpper === 'UNIDADE ORGANICA' || uUpper === 'UO') {
+      return 'Unidade Orgânica';
     }
-    return tc(String(unidadeName));
   }
 
-  if (direcaoName) {
-    const dUpper = String(direcaoName).toUpperCase().trim();
-    if (
-      dUpper.includes("DICOSAFA") ||
-      dUpper.includes("DICOSSER") ||
-      dUpper.includes("SERVIÇO") ||
-      dUpper.includes("SERVICO")
-    ) {
-      return "Serviços Centrais";
-    }
-    if (
-      dUpper.includes("GABINETE") ||
-      dUpper.includes("DIRETOR-GERAL") ||
-      dUpper.includes("DIREÇÃO E GESTÃO") ||
-      dUpper.includes("DIRECAO E GESTAO") ||
-      dUpper.includes("CONSELHO") ||
-      dUpper.includes("GDG")
-    ) {
-      return "Órgão de Direção e Gestão";
-    }
-    if (
-      dUpper.includes("ENGENHARIA") ||
-      dUpper.includes("DIVISÃO") ||
-      dUpper.includes("DIVISAO") ||
-      dUpper.includes("INCUBACAO") ||
-      dUpper.includes("CIE") ||
-      dUpper.includes("CENTRO")
-    ) {
-      return "Unidade Orgânica";
-    }
+  // 2. Verificação por Direção e Departamento
+  if (
+    allText.includes('DICOSAFA') ||
+    allText.includes('DICOSSER') ||
+    allText.includes('SERVIÇOS CENTRAIS') ||
+    allText.includes('SERVICOS CENTRAIS') ||
+    allText.includes('FINANÇAS') ||
+    allText.includes('FINANCAS') ||
+    allText.includes('RECURSOS HUMANOS') ||
+    allText.includes('PATRIMÓNIO') ||
+    allText.includes('PATRIMONIO') ||
+    allText.includes('CONTABILIDADE') ||
+    allText.includes('SERVIÇOS SOCIAIS') ||
+    allText.includes('SERVICOS SOCIAIS')
+  ) {
+    return 'Serviços Centrais';
   }
 
-  return tc(String(unidadeName || "Unidade Orgânica"));
+  if (
+    allText.includes('DIVISÃO DE ENGENHARIA') ||
+    allText.includes('DIVISAO DE ENGENHARIA') ||
+    allText.includes('ENGENHARIA') ||
+    allText.includes('CENTRO DE INCUBAÇÃO') ||
+    allText.includes('CENTRO DE INCUBACAO') ||
+    allText.includes('CIE') ||
+    allText.includes('CENTROS') ||
+    allText.includes('UNIDADE ORGÂNICA') ||
+    allText.includes('UNIDADE ORGANICA')
+  ) {
+    return 'Unidade Orgânica';
+  }
+
+  if (
+    allText.includes('GABINETE DO DIRETOR-GERAL') ||
+    allText.includes('GABINETE DO DIRETOR GERAL') ||
+    allText.includes('DIRETOR-GERAL') ||
+    allText.includes('DIRETOR GERAL') ||
+    allText.includes('GDG') ||
+    allText.includes('DPEP') ||
+    allText.includes('PLANIFICAÇÃO') ||
+    allText.includes('PLANIFICACAO') ||
+    allText.includes('UGEA') ||
+    allText.includes('AQUISIÇÕES') ||
+    allText.includes('AQUISICOES') ||
+    allText.includes('COOPERAÇÃO') ||
+    allText.includes('COOPERACAO') ||
+    allText.includes('CONTROLO TÉCNICO') ||
+    allText.includes('CONTROLO TECNICO') ||
+    allText.includes('JURÍDICO') ||
+    allText.includes('JURIDICO') ||
+    allText.includes('CONSELHO DE REPRESENTANTES') ||
+    allText.includes('CONSELHO ADMINISTRATIVO') ||
+    allText.includes('CONSELHO TÉCNICO') ||
+    allText.includes('CONSELHO DE DIREÇÃO') ||
+    allText.includes('DIREÇÃO E GESTÃO') ||
+    allText.includes('DIRECAO E GESTAO')
+  ) {
+    return 'Órgão de Direção e Gestão';
+  }
+
+  return 'Órgão de Direção e Gestão';
 }
 
 export const InstitutionalHeader = ({
@@ -61,6 +123,7 @@ export const InstitutionalHeader = ({
   isPlanificacaoHeader,
   unidadeName,
   title = "Plano de Actividade",
+  user,
 }: {
   direcaoName?: string;
   departamentoName?: string;
@@ -71,35 +134,84 @@ export const InstitutionalHeader = ({
   isPlanificacaoHeader?: boolean;
   unidadeName?: string;
   title?: string;
+  user?: any;
 }) => {
   const selectedYear = year || 2025;
   const isPESOEHeader = String(title || "").toUpperCase().includes("PESOE");
 
-  // Resolver instituição personalizada do utilizador autenticado
-  let instName = "Instituto Superior Politécnico de Songo";
-  let instLogo = "https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad";
-  try {
-    const stored = localStorage.getItem("sigep_logged_in_user") || localStorage.getItem("sigep_user");
-    if (stored) {
-      const u = JSON.parse(stored);
-      if (u.instituicaoNome) instName = u.instituicaoNome;
-      else if (u.instituicao && typeof u.instituicao === "string" && !u.instituicao.startsWith("inst-")) instName = u.instituicao;
-      else if (u.tenantName) instName = u.tenantName;
+  // Nome da instituição oficial é sempre o Instituto Superior Politécnico de Songo
+  const instName = "Instituto Superior Politécnico de Songo";
+  const instLogo = "https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad";
 
-      if (u.instituicaoLogo) instLogo = u.instituicaoLogo;
+  // Obter dados de afetação do utilizador/colaborador se fornecido
+  let userOrgao = "";
+  let userDirecao = "";
+  let userDepartamento = "";
+  let userReparticao = "";
+  let userSetor = "";
+  let userCargo = "";
+
+  if (user) {
+    userOrgao = user.unidadeOrganica || user.unidade || user.orgao || "";
+    userDirecao = user.direcao || "";
+    userDepartamento = user.departamento || "";
+    userReparticao = user.reparticao || "";
+    userSetor = user.setor || "";
+    userCargo = user.cargo || "";
+
+    // Tentar localizar no efetivo geral por email, nome ou id para preenchimento de lacunas
+    const matchedColab = EFETIVO_GERAL_DATA.find(
+      (c) =>
+        (user.email && c.email && c.email.toLowerCase() === user.email.toLowerCase()) ||
+        (user.nome && c.nome && c.nome.toLowerCase() === user.nome.toLowerCase()) ||
+        (user.id && c.id && c.id === user.id)
+    );
+
+    if (matchedColab) {
+      if (!userOrgao) userOrgao = matchedColab.unidade || "";
+      if (!userDirecao) userDirecao = matchedColab.direcao || "";
+      if (!userDepartamento) userDepartamento = matchedColab.departamento || "";
+      if (!userReparticao) userReparticao = matchedColab.reparticao || "";
+      if (!userSetor) userSetor = matchedColab.sector || (matchedColab as any).setor || "";
+      if (!userCargo) userCargo = matchedColab.cargo || "";
     }
-  } catch (e) {}
-
-  if (unidadeName && unidadeName !== "Instituto Superior Politécnico de Songo" && unidadeName !== "ISPS") {
-    instName = unidadeName;
   }
 
-  // Garantir que os nomes estão formatados corretamente e resolver o Órgão correto para Plano de Atividade
-  const displayUnidade = resolveOrgaoName(unidadeName || instName, direcaoName);
-  const displayDirecao = tc(String(direcaoName || "").trim());
-  const displayDepartamento = tc(String(departamentoName || "").trim());
-  const displayReparticao = tc(String(reparticaoName || "").trim());
-  const displaySector = tc(String(sectorName || "").trim());
+  // Resolver campos com fallback na afetação do utilizador
+  const rawUnidade = cleanHierarchyField(unidadeName) || cleanHierarchyField(userOrgao);
+  const rawDirecao = cleanHierarchyField(direcaoName) || cleanHierarchyField(userDirecao);
+  const rawDepartamento = cleanHierarchyField(departamentoName) || cleanHierarchyField(userDepartamento);
+  const rawReparticao = cleanHierarchyField(reparticaoName) || cleanHierarchyField(userReparticao);
+  const rawSector = cleanHierarchyField(sectorName) || cleanHierarchyField(userSetor);
+
+  // Mapeamento dinâmico para um dos 3 Órgãos Oficiais
+  const displayUnidade = resolveOrgaoName(rawUnidade, rawDirecao, rawDepartamento);
+  const displayDirecao = rawDirecao ? tc(rawDirecao) : (displayUnidade === "Órgão de Direção e Gestão" ? "Gabinete do Diretor-geral" : "");
+  const displayDepartamento = rawDepartamento ? tc(rawDepartamento) : "";
+  const displayReparticao = rawReparticao ? tc(rawReparticao) : "";
+  const displaySector = rawSector ? tc(rawSector) : "";
+
+  // Definir cargo hierárquico correspondente
+  let cargoResponsavel = userCargo ? tc(userCargo) : "";
+  if (!cargoResponsavel) {
+    if (displaySector) {
+      cargoResponsavel = "Responsável do Setor";
+    } else if (displayReparticao) {
+      cargoResponsavel = "Chefe da Repartição";
+    } else if (displayDepartamento) {
+      cargoResponsavel = "Chefe do Departamento";
+    } else if (displayDirecao) {
+      if (displayDirecao.toLowerCase().includes("gabinete")) {
+        cargoResponsavel = "Chefe do Gabinete";
+      } else if (displayDirecao.toLowerCase().includes("divisão") || displayDirecao.toLowerCase().includes("divisao")) {
+        cargoResponsavel = "Diretor da Divisão";
+      } else {
+        cargoResponsavel = "Diretor";
+      }
+    } else {
+      cargoResponsavel = "Chefe do Departamento";
+    }
+  }
 
   let lowestLevelName = "";
   if (displaySector) {
@@ -138,7 +250,7 @@ export const InstitutionalHeader = ({
         </div>
 
         {/* 2. Cabeçalho Oficial do Estado / Ministério */}
-        <div className="flex flex-col items-center gap-1 mb-5">
+        <div className="flex flex-col items-center gap-1 mb-5 font-serif">
           <h3 className="text-sm font-extrabold text-slate-800 tracking-[0.15em] uppercase">
             República de Moçambique
           </h3>
@@ -151,22 +263,22 @@ export const InstitutionalHeader = ({
         </div>
 
         {/* 3. Instituto Superior Politécnico de Songo */}
-        <h2 className="text-[1.8rem] font-black text-slate-900 tracking-tight mb-2 uppercase">
+        <h2 className="text-[1.8rem] font-serif font-bold text-slate-900 tracking-tight mb-2">
           {instName}
         </h2>
 
         {/* 4. Província e Distrito */}
-        <div className="flex flex-col items-center gap-0.5 mb-6">
-          <h3 className="text-xs font-bold text-slate-600 tracking-[0.12em] uppercase">
-            {instName.toLowerCase().includes("songo") ? "Província de Tete" : "Moçambique"}
+        <div className="flex flex-col items-center gap-0.5 mb-6 font-serif">
+          <h3 className="text-xs font-medium text-slate-600 tracking-[0.12em]">
+            Província de Tete
           </h3>
-          <h3 className="text-xs font-bold text-slate-600 tracking-[0.12em] uppercase">
-            {instName.toLowerCase().includes("songo") ? "Distrito de Cahora-Bassa" : "Sede Principal"}
+          <h3 className="text-xs font-medium text-slate-600 tracking-[0.12em]">
+            Distrito de Cahora-Bassa
           </h3>
         </div>
         
         {/* 5. Título Principal em Destaque */}
-        <h5 className="text-[1.25rem] font-black text-red-600 mt-2 tracking-tight uppercase">
+        <h5 className="text-[1.25rem] font-serif font-bold text-[#d90429] mt-2 tracking-tight uppercase">
           {`PROPOSTA DE ATIVIDADES PARA O PESO ${selectedYear}`}
         </h5>
 
@@ -183,66 +295,99 @@ export const InstitutionalHeader = ({
     );
   }
 
-  // CABEÇALHO DO PLANO DE ATIVIDADE (FORMATO EXATO DA IMAGEM)
+  // CABEÇALHO DO PLANO DE ATIVIDADE & DOCUMENTOS INSTITUCIONAIS (FORMATO EXATO DA IMAGEM)
   return (
-    <div className="text-center mb-6 flex flex-col items-center justify-center w-full bg-slate-50/50 p-8 rounded-t-[2.5rem] print:p-4 print:mb-4 print:w-full print:items-center print:text-center">
+    <div className="text-center mb-6 flex flex-col items-center justify-center w-full bg-transparent p-6 print:p-4 print:mb-4 print:w-full print:items-center print:text-center">
       {/* 1. Logotipo do ISPS Centrado */}
-      <div className="mb-6 flex justify-center items-center w-full text-center print:mb-4 print:flex print:justify-center print:items-center">
+      <div className="mb-5 flex justify-center items-center w-full text-center print:mb-4 print:flex print:justify-center print:items-center">
         <img
           src={instLogo}
           alt={`Logotipo ${instName}`}
-          className="w-36 h-auto max-h-36 object-contain mx-auto print:mx-auto print:block rounded-xl"
+          className="w-32 h-auto max-h-32 object-contain mx-auto print:mx-auto print:block"
           referrerPolicy="no-referrer"
         />
       </div>
 
-      {/* 2. Nome do Instituto */}
-      <h2 className="text-[2.2rem] font-black text-slate-900 tracking-tight mb-3 uppercase">
+      {/* 2. Nome da Instituição Centrado */}
+      <h2 className="text-[1.85rem] md:text-[2.25rem] font-serif font-bold text-[#0c2340] tracking-tight mb-2">
         {instName}
       </h2>
 
-      {/* 3. Província / Distrito / Localidade */}
-      <div className="flex flex-col items-center gap-1 mb-5">
-        <h3 className="text-base font-bold text-slate-700 tracking-[0.1em]">
-          {instName.toLowerCase().includes("songo") ? "Província de Tete" : "Moçambique"}
+      {/* 3. Província / Distrito */}
+      <div className="flex flex-col items-center gap-1 mb-2 font-serif text-[#0c2340]">
+        <h3 className="text-sm md:text-[0.95rem] font-medium tracking-wide">
+          Província de Tete
         </h3>
-        <h3 className="text-base font-bold text-slate-700 tracking-[0.1em]">
-          {instName.toLowerCase().includes("songo") ? "Distrito de Cahora-Bassa" : "Sede Principal"}
-        </h3>
-        <h3 className="text-base font-bold text-slate-700 tracking-[0.1em]">
-          Songo
+        <h3 className="text-sm md:text-[0.95rem] font-medium tracking-wide">
+          Distrito de Cahora-Bassa
         </h3>
       </div>
       
-      {/* 4. Hierarquia Organizacional Dinâmica */}
-      <div className="flex flex-col items-center gap-1.5 mb-6">
-        <h4 className="text-lg font-bold text-slate-900 tracking-tight">
-          Gabinete do Diretor-geral
+      {/* 4. Hierarquia Organizacional: Órgão (em Vermelho) -> Direção -> Departamento -> Repartição/Setor -> Cargo */}
+      <div className="flex flex-col items-center gap-1 mb-6 font-serif text-[#0c2340]">
+        {/* ÓRGÃO EM VERMELHO DESTAQUE */}
+        <h4 className="text-base md:text-lg font-bold text-[#d90429]">
+          {displayUnidade}
         </h4>
-        <h4 className="text-lg font-bold text-slate-900 tracking-tight">
-          Unidade Gestora e Executora de Aquisições
-        </h4>
-        <h4 className="text-lg font-bold text-slate-900 tracking-tight">
-          Chefe do Departamento
-        </h4>
+
+        {/* DIREÇÃO / GABINETE */}
+        {displayDirecao && (
+          <h4 className="text-base md:text-lg font-bold">
+            {displayDirecao}
+          </h4>
+        )}
+
+        {/* DEPARTAMENTO / DIVISÃO */}
         {displayDepartamento && (
-          <h4 className="text-lg font-bold text-slate-900 tracking-tight">
-            {displayDepartamento.toLowerCase().includes("departamento") ? displayDepartamento : `Departamento de ${displayDepartamento}`}
+          <h4 className="text-base md:text-lg font-bold">
+            {displayDepartamento.toLowerCase().startsWith("departamento") ||
+            displayDepartamento.toLowerCase().startsWith("divisão") ||
+            displayDepartamento.toLowerCase().startsWith("divisao") ||
+            displayDepartamento.toLowerCase().startsWith("unidade") ||
+            displayDepartamento.toLowerCase().startsWith("centro")
+              ? displayDepartamento
+              : `Departamento de ${displayDepartamento}`}
+          </h4>
+        )}
+
+        {/* REPARTIÇÃO / SETOR (SE APLICÁVEL) */}
+        {displayReparticao && (
+          <h4 className="text-base md:text-lg font-bold">
+            {displayReparticao.toLowerCase().startsWith("repartição") || displayReparticao.toLowerCase().startsWith("reparticao")
+              ? displayReparticao
+              : `Repartição de ${displayReparticao}`}
+          </h4>
+        )}
+
+        {displaySector && (
+          <h4 className="text-base md:text-lg font-bold">
+            {displaySector.toLowerCase().startsWith("setor")
+              ? displaySector
+              : `Setor de ${displaySector}`}
+          </h4>
+        )}
+
+        {/* CARGO DO RESPONSÁVEL / CHEFIA */}
+        {cargoResponsavel && (
+          <h4 className="text-base md:text-lg font-bold">
+            {cargoResponsavel}
           </h4>
         )}
       </div>
 
-      {/* 5. Título Dinâmico do Plano de Atividade */}
-      <h5 className="text-[1.3rem] font-black text-red-600 mt-2 tracking-tight uppercase">
-        {displayTitle.toUpperCase()}
-      </h5>
+      {/* 5. Título Dinâmico em Vermelho com Serifa & Espaçamento Elegante (se fornecido) */}
+      {displayTitle && (
+        <h5 className="text-[1.25rem] md:text-[1.5rem] font-serif font-bold text-[#d90429] tracking-wider uppercase mt-2">
+          {displayTitle}
+        </h5>
+      )}
 
       {/* 6. Linha Divisória */}
-      <div className="w-full max-w-5xl h-[3px] bg-slate-900 mt-6 mb-6"></div>
+      <div className="w-full max-w-4xl h-[2px] bg-slate-800/80 mt-6 mb-5"></div>
 
       {/* 7. Exercício Económico */}
-      <div className="mt-2">
-        <span className="text-[1.3rem] font-black text-slate-900 tracking-tight bg-[#f1f5f9] px-10 py-3 rounded-[1.2rem] border border-slate-200 shadow-sm">
+      <div className="mt-1">
+        <span className="text-sm md:text-base font-bold text-slate-900 tracking-wide bg-[#f1f5f9] px-6 py-2 rounded-xl border border-slate-200 shadow-xs">
           Exercício Económico: {selectedYear}
         </span>
       </div>

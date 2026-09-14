@@ -4243,6 +4243,7 @@ export default function PlanoWorkflowView({
                   sectorName={user.setor}
                   year={selectedYear}
                   isOwner={isSuperBossUser(user)}
+                  user={user}
                 />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b-2 border-slate-100 pb-3">
@@ -4431,6 +4432,7 @@ export default function PlanoWorkflowView({
                   sectorName={user.setor}
                   year={selectedYear}
                   isOwner={isSuperBossUser(user)}
+                  user={user}
                 />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b-2 border-slate-100 pb-3">
@@ -4562,6 +4564,7 @@ export default function PlanoWorkflowView({
                   sectorName={user.setor}
                   year={selectedYear}
                   isOwner={isSuperBossUser(user)}
+                  user={user}
                 />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b-2 border-slate-100 pb-3">
@@ -4924,6 +4927,7 @@ export default function PlanoWorkflowView({
                   sectorName={user.setor}
                   year={selectedYear}
                   isOwner={isSuperBossUser(user)}
+                  user={user}
                 />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b-2 border-slate-100 pb-3">
@@ -6982,6 +6986,7 @@ export default function PlanoWorkflowView({
                           sectorName={user.setor}
                           year={selectedYear}
                           isPlanificacaoHeader={isPlanificacao}
+                          user={user}
                           title="Plano Económico e Social e Orçamento da Entidade (PESOE)"
                         />
 
