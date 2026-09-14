@@ -1648,33 +1648,21 @@ export default function App() {
       lower.includes("planific");
 
     if (isPlan) {
-      setIsLoading(true);
-      setTimeout(() => {
-        setDashboardTitle(title);
-        setDashboardActiveItem("Gestão de Planos");
-        setView("plano_workflow");
-        setIsLoading(false);
-      }, 150);
+      setDashboardTitle(title);
+      setDashboardActiveItem("Gestão de Planos");
+      setView("plano_workflow");
       return;
     }
 
     if (title === "Entrada de Expediente" || title === "Saída de Expediente") {
-      setIsLoading(true);
-      setTimeout(() => {
-        setDashboardTitle(title);
-        setView("gestao_documentos");
-        setIsLoading(false);
-      }, 200);
+      setDashboardTitle(title);
+      setView("gestao_documentos");
       return;
     }
 
     if (title === "Painel da UGEA") {
-      setIsLoading(true);
-      setTimeout(() => {
-        setDashboardTitle("Unidade Gestora e Executora de Aquisições");
-        setView("dashboard");
-        setIsLoading(false);
-      }, 300);
+      setDashboardTitle("Unidade Gestora e Executora de Aquisições");
+      setView("dashboard");
       return;
     }
 
@@ -1682,13 +1670,9 @@ export default function App() {
       setSubMenuStack((prev) => [...prev, { title, items }]);
       setView("submenu");
     } else {
-      setIsLoading(true);
-      setTimeout(() => {
-        setDashboardTitle(title);
-        setDashboardActiveItem(title);
-        setView("dashboard");
-        setIsLoading(false);
-      }, 300);
+      setDashboardTitle(title);
+      setDashboardActiveItem(title);
+      setView("dashboard");
     }
   };
 

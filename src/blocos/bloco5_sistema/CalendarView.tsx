@@ -230,10 +230,9 @@ export default function CalendarView({
         </div>
 
         <div className="w-full flex justify-center relative">
-          {/* Calendar Grid com dimensões exatas de 1096px por 596px */}
+          {/* Calendar Grid ajustado para mostrar todas as datas e semanas completas */}
           <div 
-            className="relative bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden flex flex-col p-8"
-            style={{ width: "1096px", maxWidth: "100%", height: "596px" }}
+            className="relative bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden flex flex-col p-4 sm:p-6 md:p-8 w-full max-w-6xl min-h-fit"
           >
             {/* Background Logo covering entire calendar area */}
             <div
@@ -244,13 +243,13 @@ export default function CalendarView({
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
-                opacity: 0.15,
+                opacity: 0.12,
               }}
             />
 
             <div className="relative z-10 flex flex-col h-full bg-transparent">
-              {/* Top Header matching reference image: "Junho 2026" and "Moçambique Estatística 2026" */}
-              <div className="flex justify-between items-center pb-4 border-b border-gray-300 mb-6">
+              {/* Top Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200 mb-4 sm:mb-6">
                 <div className="flex items-center gap-3">
                   <div className="flex gap-1 bg-white border border-gray-200 p-1 rounded-xl shadow-sm">
                     <button
@@ -266,17 +265,17 @@ export default function CalendarView({
                       <ChevronRight size={18} />
                     </button>
                   </div>
-                  <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
                     {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
                   </h2>
                 </div>
-                <div className="text-sm font-bold text-slate-700 tracking-tight">
+                <div className="text-xs sm:text-sm font-bold text-slate-700 tracking-tight">
                   Moçambique Estatística {currentDate.getFullYear()}
                 </div>
               </div>
 
-              {/* Days of week header matching reference: Dom, Seg, Ter, Qua, Qui, Sex, Sáb */}
-              <div className="grid grid-cols-7 mb-2 text-center text-xs font-bold text-slate-500">
+              {/* Days of week header: Dom, Seg, Ter, Qua, Qui, Sex, Sáb */}
+              <div className="grid grid-cols-7 mb-2 text-center text-xs font-bold text-slate-500 gap-1.5 sm:gap-2 md:gap-3">
                 {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day, index) => {
                   const isTodayColumn =
                     new Date().getDay() === index &&
@@ -286,7 +285,7 @@ export default function CalendarView({
                   return (
                     <div
                       key={day}
-                      className={`py-1 text-xs font-black tracking-wider ${
+                      className={`py-1 text-[11px] sm:text-xs font-black tracking-wider ${
                         isTodayColumn ? "text-blue-700 font-extrabold" : "text-slate-500"
                       }`}
                     >
@@ -297,7 +296,7 @@ export default function CalendarView({
               </div>
 
               {/* Calendar Grid Boxes */}
-              <div className="grid grid-cols-7 gap-3">
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2 md:gap-3">
                 {(() => {
                   const year = currentDate.getFullYear();
                   const month = currentDate.getMonth();
@@ -310,15 +309,15 @@ export default function CalendarView({
                     calendarCells.push(
                       <div
                         key={`empty-${i}`}
-                        className="h-28 md:h-36 rounded-2xl border border-transparent bg-transparent"
+                        className="min-h-[75px] sm:min-h-[90px] md:min-h-[105px] rounded-2xl border border-dashed border-slate-100 bg-slate-50/20"
                       ></div>
                     );
                   }
 
-                  // Days of current month
+                  // Days of current month (all 1 to 28/29/30/31 days completely visible)
                   for (let day = 1; day <= days; day++) {
                     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                    const isJune30 = month === 5 && day === 30 && year === 2026; // Highlight June 30 as in image
+                    const isJune30 = month === 5 && day === 30 && year === 2026;
                     const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
                     const dayEvents = allEvents.filter((e) => e.date === dateStr);
 
@@ -334,40 +333,40 @@ export default function CalendarView({
                           }));
                           setShowModal(true);
                         }}
-                        className={`h-28 md:h-36 rounded-2xl border p-3 flex flex-col justify-between transition-all cursor-pointer shadow-sm relative group ${
+                        className={`min-h-[75px] sm:min-h-[90px] md:min-h-[105px] rounded-2xl border p-2 sm:p-2.5 md:p-3 flex flex-col justify-between transition-all cursor-pointer shadow-xs relative group ${
                           isJune30
-                            ? "bg-red-50/70 border-red-400 shadow-md ring-1 ring-red-300"
+                            ? "bg-red-50/70 border-red-400 shadow-sm ring-1 ring-red-300"
                             : isToday
-                            ? "bg-blue-50/50 border-blue-500 border-2"
+                            ? "bg-blue-50/60 border-blue-500 border-2 shadow-sm"
                             : "bg-white border-slate-200 hover:border-slate-400 hover:shadow-md"
                         }`}
                       >
                         <div className="flex justify-between items-center w-full">
                           <span
-                            className={`text-sm md:text-base font-bold ${
+                            className={`text-xs sm:text-sm md:text-base font-bold ${
                               isJune30 ? "text-red-600 font-black" : "text-slate-800"
                             }`}
                           >
                             {day}
                           </span>
                           {dayEvents.length > 0 && (
-                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" title={`${dayEvents.length} evento(s)`} />
+                            <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-blue-600 shrink-0" title={`${dayEvents.length} evento(s)`} />
                           )}
                         </div>
 
                         {/* Event preview inside cell */}
-                        <div className="flex flex-col gap-1 overflow-y-auto max-h-[60px] text-[11px]">
-                          {dayEvents.slice(0, 3).map((ev) => (
-                            <div key={ev.id} className="bg-blue-50 text-blue-900 px-2 py-0.5 rounded font-semibold truncate">
+                        <div className="flex flex-col gap-1 overflow-y-auto max-h-[42px] sm:max-h-[50px] text-[10px] sm:text-[11px] my-1">
+                          {dayEvents.slice(0, 2).map((ev) => (
+                            <div key={ev.id} className="bg-blue-50 text-blue-900 px-1.5 py-0.5 rounded font-semibold truncate text-[9px] sm:text-[10px]">
                               {ev.title}
                             </div>
                           ))}
                         </div>
 
-                        {/* Special badge for June 30 "Fim prazo" as in reference image */}
+                        {/* Special badge for June 30 */}
                         {isJune30 && (
-                          <div className="mt-auto w-full bg-white/90 border border-red-200 rounded-lg py-1 text-center shadow-xs">
-                            <span className="text-[11px] font-black uppercase text-red-600 tracking-wider">
+                          <div className="mt-auto w-full bg-white/90 border border-red-200 rounded-md py-0.5 text-center shadow-xs">
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase text-red-600 tracking-wider">
                               Fim prazo
                             </span>
                           </div>
@@ -378,13 +377,6 @@ export default function CalendarView({
 
                   return calendarCells;
                 })()}
-              </div>
-
-              {/* Footer Watermark */}
-              <div className="pt-6 mt-auto flex justify-end">
-                <span className="text-2xl font-black text-gray-300 font-serif tracking-tighter">
-                  Songo
-                </span>
               </div>
             </div>
           </div>
