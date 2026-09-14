@@ -258,75 +258,150 @@ export const DPEPDashboard: React.FC<DPEPDashboardProps> = ({
       >
         <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl">
+            <div className={`p-3 rounded-2xl ${stats.totalActivities > 0 ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-400"}`}>
               <BarChart3 size={22} />
             </div>
             <div>
               <h4 className="text-base font-black text-slate-900 tracking-tight">Cronograma de Prazos e Tramitação</h4>
-              <p className="text-xs text-slate-400 font-bold">Fases de Consolidação e Aprovação do Plano Anual ({selectedYear})</p>
+              <p className="text-xs text-slate-400 font-bold">
+                {stats.totalActivities > 0
+                  ? `Fases de Consolidação e Aprovação do Plano Anual (${selectedYear}) • Em Funcionamento`
+                  : `Fases de Consolidação e Aprovação do Plano Anual (${selectedYear}) • Aguardando Início (Zerado)`}
+              </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200/60">
-            <CalendarCheck size={16} className="text-emerald-600" />
-            <span>Calendário Regulamentar</span>
+            <CalendarCheck size={16} className={stats.totalActivities > 0 ? "text-emerald-600" : "text-slate-400"} />
+            <span>{stats.totalActivities > 0 ? "Cronograma em Funcionamento" : "Cronograma Zerado (Inativo)"}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { 
-              label: "Submissão Setorial", 
-              date: "30 de Outubro", 
-              progress: 100, 
-              color: "bg-emerald-500",
-              status: "Concluído",
-              desc: "Recepção de propostas setoriais"
-            },
-            { 
-              label: "Consolidação DPEP", 
-              date: "15 de Novembro", 
-              progress: 65, 
-              color: "bg-amber-500",
-              status: "Em Curso",
-              desc: "Harmonização de atividades e rubricas"
-            },
-            { 
-              label: "Parecer Técnico", 
-              date: "30 de Novembro", 
-              progress: 0, 
-              color: "bg-slate-300",
-              status: "Pendente",
-              desc: "Validação orçamental e conformidade"
-            },
-            { 
-              label: "Aprovação Geral", 
-              date: "15 de Dezembro", 
-              progress: 0, 
-              color: "bg-slate-300",
-              status: "Pendente",
-              desc: "Homologação pelo Conselho de Direção"
-            }
-          ].map((step, i) => (
-            <div key={i} className="p-5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-3">
-              <div className="flex justify-between items-center text-xs font-black tracking-wider">
-                <span className="text-slate-800">{step.label}</span>
-                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
-                  step.status === 'Concluído' ? 'bg-emerald-100 text-emerald-700' :
-                  step.status === 'Em Curso' ? 'bg-amber-100 text-amber-700' :
-                  'bg-slate-200 text-slate-600'
-                }`}>
-                  {step.status}
-                </span>
+          {(() => {
+            const hasActivities = stats.totalActivities > 0;
+            
+            // Submissão Setorial
+            const submissaoPercent = hasActivities
+              ? Math.round((stats.submetidas / stats.totalActivities) * 100)
+              : 0;
+            const submissaoStatus = !hasActivities 
+              ? "Não Iniciado"
+              : submissaoPercent === 100
+                ? "Concluído"
+                : submissaoPercent > 0
+                  ? "Em Curso"
+                  : "Pendente";
+            const submissaoColor = !hasActivities
+              ? "bg-slate-300"
+              : submissaoPercent === 100
+                ? "bg-emerald-500"
+                : submissaoPercent > 0
+                  ? "bg-amber-500"
+                  : "bg-slate-300";
+
+            // Consolidação DPEP
+            const consolidacaoPercent = hasActivities && stats.submetidas > 0
+              ? Math.min(100, Math.round(((stats.submetidas + stats.aprovadas) / (stats.totalActivities * 2)) * 100))
+              : 0;
+            const consolidacaoStatus = !hasActivities || stats.submetidas === 0
+              ? "Não Iniciado"
+              : consolidacaoPercent >= 100
+                ? "Concluído"
+                : "Em Curso";
+            const consolidacaoColor = !hasActivities || stats.submetidas === 0
+              ? "bg-slate-300"
+              : consolidacaoPercent >= 100
+                ? "bg-emerald-500"
+                : "bg-amber-500";
+
+            // Parecer Técnico (Aprovações a nível setorial/direção)
+            const parecerPercent = hasActivities
+              ? Math.round((stats.aprovadas / stats.totalActivities) * 100)
+              : 0;
+            const parecerStatus = !hasActivities || stats.aprovadas === 0
+              ? "Não Iniciado"
+              : parecerPercent === 100
+                ? "Concluído"
+                : "Em Curso";
+            const parecerColor = !hasActivities || stats.aprovadas === 0
+              ? "bg-slate-300"
+              : parecerPercent === 100
+                ? "bg-emerald-500"
+                : "bg-amber-500";
+
+            // Aprovação Geral (Homologação final/Execução)
+            const aprovacaoPercent = hasActivities
+              ? Math.round((stats.executadas / stats.totalActivities) * 100)
+              : 0;
+            const aprovacaoStatus = !hasActivities || stats.executadas === 0
+              ? "Não Iniciado"
+              : aprovacaoPercent === 100
+                ? "Concluído"
+                : "Em Curso";
+            const aprovacaoColor = !hasActivities || stats.executadas === 0
+              ? "bg-slate-300"
+              : aprovacaoPercent === 100
+                ? "bg-emerald-500"
+                : "bg-amber-500";
+
+            const steps = [
+              { 
+                label: "Submissão Setorial", 
+                date: "30 de Outubro", 
+                progress: submissaoPercent, 
+                color: submissaoColor,
+                status: submissaoStatus,
+                desc: hasActivities ? `${stats.submetidas} de ${stats.totalActivities} atividades submetidas` : "Recepção de propostas setoriais"
+              },
+              { 
+                label: "Consolidação DPEP", 
+                date: "15 de Novembro", 
+                progress: consolidacaoPercent, 
+                color: consolidacaoColor,
+                status: consolidacaoStatus,
+                desc: hasActivities ? "Harmonização de atividades e rubricas" : "Aguardando submissões setoriais"
+              },
+              { 
+                label: "Parecer Técnico", 
+                date: "30 de Novembro", 
+                progress: parecerPercent, 
+                color: parecerColor,
+                status: parecerStatus,
+                desc: hasActivities ? `${stats.aprovadas} de ${stats.totalActivities} validadas em parecer` : "Validação orçamental e conformidade"
+              },
+              { 
+                label: "Aprovação Geral", 
+                date: "15 de Dezembro", 
+                progress: aprovacaoPercent, 
+                color: aprovacaoColor,
+                status: aprovacaoStatus,
+                desc: hasActivities ? `${stats.executadas} homologadas/em execução` : "Homologação pelo Conselho de Direção"
+              }
+            ];
+
+            return steps.map((step, i) => (
+              <div key={i} className="p-5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-3">
+                <div className="flex justify-between items-center text-xs font-black tracking-wider">
+                  <span className="text-slate-800">{step.label}</span>
+                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
+                    step.status === 'Concluído' ? 'bg-emerald-100 text-emerald-700' :
+                    step.status === 'Em Curso' ? 'bg-amber-100 text-amber-700' :
+                    'bg-slate-200 text-slate-600'
+                  }`}>
+                    {step.status}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">{step.desc}</p>
+                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className={`h-full ${step.color} transition-all duration-500`} style={{ width: `${step.progress}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-black text-slate-700">
+                  <span className="text-[10px] text-slate-400">{step.progress}%</span>
+                  <span>Prazo: {step.date}</span>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">{step.desc}</p>
-              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div className={`h-full ${step.color} transition-all duration-500`} style={{ width: `${step.progress}%` }} />
-              </div>
-              <div className="text-right text-[11px] font-black text-slate-700">
-                Prazo: {step.date}
-              </div>
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       </motion.div>
     </motion.div>

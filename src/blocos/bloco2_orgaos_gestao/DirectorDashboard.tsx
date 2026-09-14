@@ -34,6 +34,11 @@ import {
   BookOpen,
   FlaskConical,
   Wrench,
+  Compass,
+  ExternalLink,
+  Layers,
+  Network,
+  X,
 } from "lucide-react";
 
 import BoardOverview from "../bloco2_orgaos_gestao/BoardOverview";
@@ -98,6 +103,15 @@ import { firestoreService } from "../../lib/firestoreService";
 import MainHeader from "../bloco1_apresentacao/MainHeader";
 import VisaoGeralCards from "../../components/VisaoGeralCards";
 import DICOSSEROverview from "./DICOSSEROverview";
+import {
+  getActiveInstituicaoId,
+  setActiveInstituicaoId,
+  buildEstruturaInstituicao,
+  getDepartamentosPorDirecao,
+  getReparticoesPorDepartamento,
+  findDirecaoPorDepartamento,
+  notifyEstruturaUpdated,
+} from "../../lib/instituicaoEstruturaService";
 const RHStatView = lazy(() => import("../bloco7_relatorios/RHStatisticsWorkflowView"));
 const BolsasEstudosView = lazy(() => import("../bloco4_servicos_centrais/BolsasEstudosView"));
 const GestaoEstudantilView = lazy(() => import("../bloco3_unidades_organicas/GestaoEstudantilView"));
@@ -229,6 +243,41 @@ export default function DirectorDashboard({
       setActiveItem(initialActiveItem);
     }
   }, [initialActiveItem]);
+
+  // Navegação Operacional da Estrutura Institucional (Direções, Departamentos e Setores)
+  const [activeInstId, setActiveInstId] = useState<string>(() => getActiveInstituicaoId());
+  const [estrutura, setEstrutura] = useState(() => buildEstruturaInstituicao(getActiveInstituicaoId()));
+  const [allInstituicoes, setAllInstituicoes] = useState<any[]>([]);
+  const [showNavModal, setShowNavModal] = useState(false);
+
+  React.useEffect(() => {
+    const handleEstruturaChange = () => {
+      const currentInst = getActiveInstituicaoId();
+      setActiveInstId(currentInst);
+      setEstrutura(buildEstruturaInstituicao(currentInst));
+    };
+    window.addEventListener("sigep_estrutura_updated", handleEstruturaChange);
+    window.addEventListener("instituicao_changed", handleEstruturaChange);
+
+    const unsub = firestoreService.instituicoes.subscribe((list: any[]) => {
+      if (list && list.length > 0) {
+        setAllInstituicoes(list);
+      }
+    });
+
+    return () => {
+      window.removeEventListener("sigep_estrutura_updated", handleEstruturaChange);
+      window.removeEventListener("instituicao_changed", handleEstruturaChange);
+      unsub();
+    };
+  }, []);
+
+  const currentDepartamentos = getDepartamentosPorDirecao(title, activeInstId);
+  const parentInfo = findDirecaoPorDepartamento(title, activeInstId);
+  const parentDirecao = parentInfo?.direcao || null;
+  const currentReparticoes = getReparticoesPorDepartamento(title, activeInstId);
+  const isSuperBoss = isSuperBossUser(user);
+
   const [viewHistory, setViewHistory] = useState<any[]>([]);
   const [selectedPlanType, setSelectedPlanType] = useState<string | null>(null);
   const [balancoType, setBalancoType] = useState<string | null>(null);
@@ -1537,6 +1586,224 @@ export default function DirectorDashboard({
               ← Voltar à seleção de plano
             </button>
           )}
+
+        {/* Barra de Navegação Estrutural e Operacional por Direções, Departamentos e Setores */}
+        <div className="mb-4 bg-gradient-to-r from-slate-50 to-blue-50/40 p-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            {parentDirecao && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDashboardTitle(parentDirecao);
+                  setActiveItem("Visão Geral");
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100/80 hover:bg-blue-600 text-blue-900 hover:text-white rounded-xl font-bold transition shadow-xs cursor-pointer"
+                title={`Voltar à Direção mãe: ${parentDirecao}`}
+              >
+                <span>← Direção: {parentDirecao}</span>
+              </button>
+            )}
+
+            {currentDepartamentos.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
+                  <Layers size={11} className="text-blue-600" />
+                  Departamentos:
+                </span>
+                {currentDepartamentos.map((deptName, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setDashboardTitle(deptName);
+                      setActiveItem("Visão Geral");
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-blue-600 text-slate-700 hover:text-white border border-slate-200 hover:border-blue-600 rounded-lg font-semibold transition cursor-pointer shadow-xs text-[11px]"
+                    title={`Aceder ao Departamento: ${deptName}`}
+                  >
+                    <span>{deptName}</span>
+                    <ExternalLink size={9} className="opacity-60" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {currentReparticoes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
+                  <Network size={11} className="text-indigo-600" />
+                  Setores / Repartições:
+                </span>
+                {currentReparticoes.map((repName, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setDashboardTitle(repName);
+                      setActiveItem("Visão Geral");
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 rounded-lg font-semibold transition cursor-pointer shadow-xs text-[11px]"
+                    title={`Aceder ao Setor: ${repName}`}
+                  >
+                    <span>{repName}</span>
+                    <ExternalLink size={9} className="opacity-60" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Botão de Navegação Geral da Instituição */}
+          <button
+            type="button"
+            onClick={() => setShowNavModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-xs cursor-pointer ml-auto"
+            title="Navegar por todas as Direções, Departamentos e Setores da Instituição"
+          >
+            <Compass size={13} className="text-amber-400" />
+            <span>Navegar na Instituição</span>
+          </button>
+        </div>
+
+        {/* Modal de Navegação por Instituição, Direções e Setores */}
+        {showNavModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-slate-200">
+              <div className="p-4 sm:p-6 bg-slate-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-blue-600 text-white">
+                    <Compass size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg text-white">Navegador Institucional Completo</h3>
+                    <p className="text-xs text-slate-300">
+                      Aceda instantaneamente a qualquer Direção, Departamento ou Setor para operação
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNavModal(false)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Seletor de Instituição para o Administrador Geral */}
+              {allInstituicoes.length > 0 && (
+                <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <span className="font-bold text-slate-600">Instituição em Navegação:</span>
+                  <select
+                    value={activeInstId}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setActiveInstId(newId);
+                      setActiveInstituicaoId(newId);
+                      setEstrutura(buildEstruturaInstituicao(newId));
+                      notifyEstruturaUpdated();
+                    }}
+                    className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-bold text-blue-900 shadow-xs focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    {allInstituicoes.map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Lista Estrutural */}
+              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                {estrutura && estrutura.length > 0 ? (
+                  estrutura.map((orgao, orgaoIdx) => (
+                    <div key={orgaoIdx} className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 pb-1 border-b border-slate-200">
+                        {orgao.nome}
+                      </h4>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {orgao.direcoes.map((dir, dirIdx) => {
+                          const dirNome = dir.rawTitle || dir.nome;
+                          return (
+                            <div
+                              key={dirIdx}
+                              className="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-blue-300 transition space-y-3"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-bold text-slate-900 text-sm leading-snug">
+                                  {dirNome}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDashboardTitle(dirNome);
+                                    setActiveItem("Visão Geral");
+                                    setShowNavModal(false);
+                                  }}
+                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shrink-0 cursor-pointer"
+                                >
+                                  Operar
+                                </button>
+                              </div>
+
+                              {/* Departamentos da Direção */}
+                              {dir.departamentos && dir.departamentos.length > 0 && (
+                                <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Departamentos:
+                                  </span>
+                                  <div className="space-y-1">
+                                    {dir.departamentos.map((dept, deptIdx) => (
+                                      <div
+                                        key={deptIdx}
+                                        className="flex items-center justify-between text-xs py-1 px-2 bg-white rounded-lg border border-slate-100"
+                                      >
+                                        <span className="text-slate-700 font-medium truncate mr-2">
+                                          {dept.nome}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDashboardTitle(dept.nome);
+                                            setActiveItem("Visão Geral");
+                                            setShowNavModal(false);
+                                          }}
+                                          className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline shrink-0 cursor-pointer"
+                                        >
+                                          Aceder
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400 italic text-center py-8">
+                    Nenhuma estrutura cadastrada para esta instituição.
+                  </p>
+                )}
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowNavModal(false)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs transition"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeItem !== "Caixa de Mensagens" && activeItem !== "Estatística" && activeItem !== "Bolsa de Estudos" && (
           <h2 className="text-2xl font-bold text-slate-800 mb-6 font-serif tracking-tight">

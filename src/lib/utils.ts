@@ -1773,6 +1773,134 @@ export function isCycleOfficiallyStarted(year: number): boolean {
 }
 
 /**
+ * Helper to extract dominant colors from an image URL or base64 data URL
+ */
+export async function extractDominantColorsFromImage(
+  imageSrc: string
+): Promise<{ primaryColor: string; secondaryColor: string; accentColor: string }> {
+  return new Promise((resolve) => {
+    // Default system colors (ISPS signature navy/gold/blue)
+    const defaults = {
+      primaryColor: "#050b38",
+      secondaryColor: "#0d1b54",
+      accentColor: "#FFB800",
+    };
+
+    if (!imageSrc || typeof window === "undefined") {
+      resolve(defaults);
+      return;
+    }
+
+    try {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.src = imageSrc;
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (!ctx) {
+            resolve(defaults);
+            return;
+          }
+
+          // Scale down for fast color analysis
+          const sampleSize = 64;
+          canvas.width = sampleSize;
+          canvas.height = sampleSize;
+          ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+
+          const imgData = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+          const colorCounts: Record<string, { r: number; g: number; b: number; count: number; brightness: number; sat: number }> = {};
+
+          for (let i = 0; i < imgData.length; i += 16) {
+            const r = imgData[i];
+            const g = imgData[i + 1];
+            const b = imgData[i + 2];
+            const a = imgData[i + 3];
+
+            // Ignore transparent or near-transparent pixels
+            if (a < 80) continue;
+
+            // Quantize to group similar colors
+            const quantR = Math.round(r / 20) * 20;
+            const quantG = Math.round(g / 20) * 20;
+            const quantB = Math.round(b / 20) * 20;
+
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const sat = max === 0 ? 0 : (max - min) / max;
+
+            // Ignore pure white, near-white, pure black backgrounds
+            if (brightness > 245 && sat < 0.15) continue;
+            if (brightness < 15 && sat < 0.15) continue;
+
+            const key = `${quantR},${quantG},${quantB}`;
+            if (!colorCounts[key]) {
+              colorCounts[key] = { r, g, b, count: 0, brightness, sat };
+            }
+            colorCounts[key].count++;
+          }
+
+          const sortedColors = Object.values(colorCounts).sort((a, b) => {
+            // Prioritize saturated and prominent colors
+            const scoreA = a.count * (1 + a.sat * 2);
+            const scoreB = b.count * (1 + b.sat * 2);
+            return scoreB - scoreA;
+          });
+
+          if (sortedColors.length === 0) {
+            resolve(defaults);
+            return;
+          }
+
+          const toHex = (r: number, g: number, b: number) =>
+            "#" + [r, g, b].map((x) => Math.min(255, Math.max(0, Math.round(x))).toString(16).padStart(2, "0")).join("");
+
+          // Dominant dark/deep primary for headers and bars
+          let primary = sortedColors[0];
+          // Find a contrasting accent color (e.g. golden, bright, or complementary)
+          let accent = sortedColors.find((c) => Math.abs(c.brightness - primary.brightness) > 60 || c.sat > 0.5) || sortedColors[1] || primary;
+          // Secondary shade
+          let secondary = sortedColors.find((c) => c !== primary && c !== accent) || primary;
+
+          // Adjust primary to ensure good contrast if it's too light
+          let primR = primary.r;
+          let primG = primary.g;
+          let primB = primary.b;
+          if (primary.brightness > 140) {
+            primR = Math.floor(primR * 0.4);
+            primG = Math.floor(primG * 0.4);
+            primB = Math.floor(primB * 0.4);
+          }
+
+          const hexPrimary = toHex(primR, primG, primB);
+          const hexSecondary = toHex(Math.floor(primR * 1.3), Math.floor(primG * 1.3), Math.floor(primB * 1.3));
+          const hexAccent = toHex(accent.r, accent.g, accent.b);
+
+          resolve({
+            primaryColor: hexPrimary,
+            secondaryColor: hexSecondary,
+            accentColor: hexAccent,
+          });
+        } catch (e) {
+          console.warn("Could not extract dominant colors:", e);
+          resolve(defaults);
+        }
+      };
+
+      img.onerror = () => {
+        resolve(defaults);
+      };
+    } catch {
+      resolve(defaults);
+    }
+  });
+}
+
+/**
  * Helper to retry dynamic imports (lazy modules) in case of intermittent network/cache errors
  */
 export function lazyRetry<T extends React.ComponentType<any>>(

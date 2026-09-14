@@ -14,6 +14,7 @@ import EventBlock from "../blocos/bloco8_gerais/EventBlock";
 import { RefreshCw, X, Loader2 } from "lucide-react";
 import { isSuperBossUser, getUserWorkspace } from "../lib/auth";
 import { lazyRetry } from "../lib/utils";
+import { setActiveInstituicaoId } from "../lib/instituicaoEstruturaService";
 import SistemaView from "../blocos/bloco5_sistema/SistemaView";
 
 // Lazy loading heavy views with automatic retry
@@ -458,6 +459,13 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
             colaboradores={colaboradores}
             onShowAlert={onShowAlert}
             initialActiveItem={dashboardActiveItem}
+            onNavigateToWorkspace={(workspaceTitle, instId) => {
+              if (instId) {
+                setActiveInstituicaoId(instId);
+              }
+              if (setDashboardTitle) setDashboardTitle(workspaceTitle);
+              if (onSetView) onSetView("dashboard");
+            }}
           />
         );
       }

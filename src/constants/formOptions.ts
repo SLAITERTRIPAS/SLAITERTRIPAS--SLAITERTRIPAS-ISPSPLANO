@@ -1,7 +1,19 @@
 import { PROVINCIAS_DISTRITOS } from "./locations";
+import {
+  initEstruturaService,
+  getOrgaosFromGestaoInstituicoes,
+  getDepartamentosPorDirecao,
+  getReparticoesPorDepartamento,
+} from "../lib/instituicaoEstruturaService";
+
 export { PROVINCIAS_DISTRITOS };
 
-export const UNIDADES_ORGANICAS_SISTEMA = [
+export const UNIDADES_ORGANICAS_SISTEMA: {
+  id: string;
+  nome: string;
+  descricao: string;
+  direcoes: string[];
+}[] = [
   {
     id: "odg",
     nome: "Órgão de Direção e Gestão",
@@ -133,6 +145,13 @@ export function getDepartamentosByDirecaoKey(direcaoKey: string): string[] {
       return v;
     }
   }
+
+  // Consultar dinamicamente na Gestão das Instituições
+  const dynamicDepts = getDepartamentosPorDirecao(direcaoKey);
+  if (dynamicDepts && dynamicDepts.length > 0) {
+    return dynamicDepts;
+  }
+
   return [];
 }
 
@@ -339,7 +358,13 @@ export function getSetoresByDepartamento(dept?: string | null): string[] {
     }
   });
 
-  // 4. Filtrar termos que não são setores de trabalho (como "Único", "Chefe de...", "Membros...")
+  // 4. Consultar diretamente na Gestão das Instituições
+  const dynamicReps = getReparticoesPorDepartamento(cleanDept);
+  if (dynamicReps && dynamicReps.length > 0) {
+    results.push(...dynamicReps);
+  }
+
+  // 5. Filtrar termos que não são setores de trabalho (como "Único", "Chefe de...", "Membros...")
   const filtered = results.filter((s) => {
     if (!s || typeof s !== "string") return false;
     const l = s.trim().toLowerCase();
@@ -350,6 +375,62 @@ export function getSetoresByDepartamento(dept?: string | null): string[] {
   });
 
   return Array.from(new Set(filtered));
+}
+
+/**
+ * Sincroniza a estrutura organizacional em memória com a Gestão das Instituições
+ */
+export function syncFormOptionsWithGestaoInstituicoes(instituicaoId?: string) {
+  try {
+    const orgaos = getOrgaosFromGestaoInstituicoes(instituicaoId);
+    if (!orgaos || orgaos.length === 0) return;
+
+    // Atualizar UNIDADES_ORGANICAS_SISTEMA preservando a referência do array
+    UNIDADES_ORGANICAS_SISTEMA.length = 0;
+    orgaos.forEach((org) => {
+      UNIDADES_ORGANICAS_SISTEMA.push({
+        id: org.id || org.nome.toLowerCase().replace(/\s+/g, "_"),
+        nome: org.nome,
+        descricao: org.tipo || org.nome,
+        direcoes: org.direcoes.map((d) => d.nome),
+      });
+
+      // Atualizar DEPARTAMENTOS
+      org.direcoes.forEach((d) => {
+        const depts = d.departamentos.map((dept) => dept.nome);
+        if (depts.length > 0) {
+          DEPARTAMENTOS[d.nome] = depts;
+          if (d.rawTitle && d.rawTitle !== d.nome) {
+            DEPARTAMENTOS[d.rawTitle] = depts;
+          }
+        }
+
+        // Atualizar REPARTICOES
+        d.departamentos.forEach((dept) => {
+          if (dept.reparticoes && dept.reparticoes.length > 0) {
+            REPARTICOES[dept.nome] = dept.reparticoes;
+          }
+        });
+      });
+    });
+  } catch (e) {
+    console.warn("Aviso ao sincronizar formOptions com Gestão das Instituições:", e);
+  }
+}
+
+// Inicializar listener no ambiente do navegador para auto-sincronizar
+if (typeof window !== "undefined") {
+  initEstruturaService();
+  window.addEventListener("sigep_estrutura_updated", () => {
+    syncFormOptionsWithGestaoInstituicoes();
+  });
+  window.addEventListener("instituicao_updated", (e: any) => {
+    syncFormOptionsWithGestaoInstituicoes(e?.detail?.id);
+  });
+  // Sincronização inicial rápida
+  setTimeout(() => {
+    syncFormOptionsWithGestaoInstituicoes();
+  }, 100);
 }
 
 export const CURSOS: Record<string, string[]> = {

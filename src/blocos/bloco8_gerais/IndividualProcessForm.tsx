@@ -49,7 +49,9 @@ import {
   CURSOS,
   SETORES,
   getSetoresByDepartamento,
+  getDepartamentosByDirecaoKey,
 } from "../../constants/formOptions";
+import { getReparticoesPorDepartamento } from "../../lib/instituicaoEstruturaService";
 import MainHeader from "../bloco1_apresentacao/MainHeader";
 import {
   classifyTipo,
@@ -2176,12 +2178,8 @@ export default function IndividualProcessForm({
                   >
                     <option value="">Selecione...</option>
                     {(
-                      DEPARTAMENTOS[
-                        formData.direcao as keyof typeof DEPARTAMENTOS
-                      ] ||
-                      DEPARTAMENTOS[
-                        formData.direcao as keyof typeof DEPARTAMENTOS
-                      ] ||
+                      (formData.direcao && DEPARTAMENTOS[formData.direcao as keyof typeof DEPARTAMENTOS]) ||
+                      getDepartamentosByDirecaoKey(formData.direcao) ||
                       []
                     )?.map((d) => (
                       <option key={d} value={d}>
@@ -2253,9 +2251,9 @@ export default function IndividualProcessForm({
                     >
                       <option value="">Selecione...</option>
                       {(
-                        REPARTICOES[
-                          formData.departamento as keyof typeof REPARTICOES
-                        ] || []
+                        (formData.departamento && REPARTICOES[formData.departamento as keyof typeof REPARTICOES]) ||
+                        getReparticoesPorDepartamento(formData.departamento) ||
+                        []
                       )?.map((r) => (
                         <option key={r} value={r}>
                           {r}

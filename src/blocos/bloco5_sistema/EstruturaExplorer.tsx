@@ -17,11 +17,29 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
-  MapPin
+  MapPin,
+  Palette,
+  Sparkles,
+  ListTree,
+  Wand2,
+  RefreshCw,
+  HelpCircle,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import { firestoreService, fetchCollection } from "../../lib/firestoreService";
 import { isSuperBossUser } from "../../lib/auth";
 import { PROVINCIAS } from "../../constants/formOptions";
+import { extractDominantColorsFromImage } from "../../lib/utils";
+import { 
+  notifyEstruturaUpdated,
+  MODELOS_ORGANOGRAMA,
+  parseOrganogramaToEstrutura,
+  persistEstruturaFromOrganograma,
+  getActiveInstituicaoId,
+  setActiveInstituicaoId,
+} from "../../lib/instituicaoEstruturaService";
+import { TIPOS_INSTITUICAO_CONFIG, getTipoInstituicaoConfig } from "../../lib/instituicaoTiposConfig";
 
 const ispsDefault = {
   id: "isps",
@@ -39,10 +57,12 @@ export const EstruturaExplorer = ({
   onRegistarAdmin,
   initialTab,
   loggedUser: propLoggedUser,
+  onNavigateToWorkspace,
 }: { 
   onRegistarAdmin: (instId: string) => void;
   initialTab?: "instituicoes" | "estrutura";
   loggedUser?: any;
+  onNavigateToWorkspace?: (workspaceTitle: string, instituicaoId?: string) => void;
 }) => {
   // 1. Obter utilizador autenticado e verificar permissões
   let loggedUser: any = propLoggedUser || null;
@@ -100,12 +120,21 @@ export const EstruturaExplorer = ({
   // Campos do formulário de instituição
   const [instNome, setInstNome] = useState("");
   const [instLogo, setInstLogo] = useState("");
+  const [instPrimaryColor, setInstPrimaryColor] = useState("#050b38");
+  const [instSecondaryColor, setInstSecondaryColor] = useState("#0d1b54");
+  const [instAccentColor, setInstAccentColor] = useState("#FFB800");
+  const [isExtractingColors, setIsExtractingColors] = useState(false);
   const [instTipoActividades, setInstTipoActividades] = useState("");
   const [instOrganograma, setInstOrganograma] = useState("");
   const [instComposicao, setInstComposicao] = useState("");
   const [instProvincia, setInstProvincia] = useState("");
   const [instDistrito, setInstDistrito] = useState("");
   const [editingInstId, setEditingInstId] = useState<string | null>(null);
+
+  // Estados para geração, sincronização e pré-visualização de organograma
+  const [autoGenerateEstrutura, setAutoGenerateEstrutura] = useState(true);
+  const [showOrganogramaPreview, setShowOrganogramaPreview] = useState(false);
+  const [isSyncingOrganograma, setIsSyncingOrganograma] = useState(false);
 
   // 4. Scoping / Filtragem por inquilino (Tenant)
   const [selectedInstId, setSelectedInstId] = useState<string>(loggedUser?.instituicaoId || "isps");
@@ -390,11 +419,36 @@ export const EstruturaExplorer = ({
   const filteredDeletedDirections = deletedDirections.filter((d) => (d.instituicaoId || "isps") === selectedInstId);
 
   // Se não houver instituição selecionada ou for a original, mostramos estrutura estática.
-  // Caso contrário (instituição customizada), iniciamos com tela limpa ou customizada.
+  // Caso contrário (instituição customizada), a estrutura é baseada no seu organograma.
   const isDefaultInst = !selectedInstId || selectedInstId === "original" || selectedInstId === "isps";
   const baseOrgans = isDefaultInst ? estrutura : [];
 
-  // Merge static organs and custom ones
+  // Para novas instituições que ainda não tenham nós persistidos individualmente, derivar do seu organograma
+  let organogramaDerivedOrgaos: any[] = [];
+  const currentActiveInst = instituicoes.find((i) => i.id === selectedInstId);
+  if (!isDefaultInst && filteredCustomOrgaos.length === 0 && currentActiveInst && (currentActiveInst.organograma || currentActiveInst.composicao)) {
+    const parsed = parseOrganogramaToEstrutura(currentActiveInst.organograma, currentActiveInst.composicao);
+    organogramaDerivedOrgaos = parsed.map((po, idx) => ({
+      id: `derived_org_${idx}`,
+      title: po.nome,
+      type: po.tipo || "Unidade Estrutural do Organograma",
+      isCustom: true,
+      direcoes: po.direcoes.map((pd, dIdx) => ({
+        id: `derived_dir_${idx}_${dIdx}`,
+        title: pd.nome,
+        rawTitle: pd.rawTitle || pd.nome,
+        departamentos: pd.departamentos.map((pdep, depIdx) => ({
+          id: `derived_dep_${idx}_${dIdx}_${depIdx}`,
+          title: pdep.nome,
+          reparticoes: pdep.reparticoes,
+          isCustom: true
+        })),
+        isCustom: true
+      }))
+    }));
+  }
+
+  // Merge static organs, custom ones and organograma-derived ones
   const mergedOrgaos = [
     ...baseOrgans,
     ...filteredCustomOrgaos.map((co) => ({
@@ -403,7 +457,8 @@ export const EstruturaExplorer = ({
       type: co.type || "Unidade Estrutural Adicional",
       isCustom: true,
       direcoes: co.direcoes || []
-    }))
+    })),
+    ...organogramaDerivedOrgaos
   ];
 
   // Merge static directions and dynamic custom directions for the active unit
@@ -490,6 +545,7 @@ export const EstruturaExplorer = ({
         createdAt: new Date().toISOString()
       });
       setNewDeptName(prev => ({ ...prev, [directionTitle]: "" }));
+      notifyEstruturaUpdated();
       alert("Departamento adicionado com sucesso!");
     } catch (err) {
       console.error(err);
@@ -514,6 +570,7 @@ export const EstruturaExplorer = ({
         createdAt: new Date().toISOString()
       });
       setNewRepName(prev => ({ ...prev, [key]: "" }));
+      notifyEstruturaUpdated();
       alert("Repartição/Setor adicionado com sucesso!");
     } catch (err) {
       console.error(err);
@@ -525,6 +582,7 @@ export const EstruturaExplorer = ({
     if (window.confirm("Tem a certeza que pretende excluir?")) {
       try {
         await firestoreService.estrutura_adicionais.delete(id);
+        notifyEstruturaUpdated();
         alert("Eliminado com sucesso!");
       } catch (err) {
         console.error(err);
@@ -551,6 +609,7 @@ export const EstruturaExplorer = ({
       setNewOrganTitle("");
       setNewOrganType("");
       setShowOrganForm(false);
+      notifyEstruturaUpdated();
       alert("Órgão registado com sucesso!");
     } catch (err) {
       console.error(err);
@@ -565,6 +624,7 @@ export const EstruturaExplorer = ({
     if (window.confirm("Tem a certeza que pretende excluir?")) {
       try {
         await firestoreService.orgaos_custom.delete(id);
+        notifyEstruturaUpdated();
         alert("Órgão eliminado com sucesso!");
       } catch (err) {
         console.error(err);
@@ -617,6 +677,7 @@ export const EstruturaExplorer = ({
       setMissao("");
       
       setShowRegistoForm(false);
+      notifyEstruturaUpdated();
       alert("Direção registada com sucesso!");
     } catch (err) {
       console.error(err);
@@ -634,6 +695,7 @@ export const EstruturaExplorer = ({
       try {
         const res = await firestoreService.deleteDirectionAndCascade(dirTitle, isCustom, dir.id);
         if (res.success) {
+          notifyEstruturaUpdated();
           alert(`Direção "${dirTitle}" e todos os dados associados foram eliminados com sucesso! Registos afetados/limpos: ${res.deletedCount}`);
         } else {
           alert(`Erro ao eliminar a direção: ${res.error}`);
@@ -646,12 +708,30 @@ export const EstruturaExplorer = ({
   };
 
   // Handlers para Instituição
+  const processLogoColors = async (logoDataUrl: string) => {
+    setInstLogo(logoDataUrl);
+    if (logoDataUrl) {
+      setIsExtractingColors(true);
+      try {
+        const colors = await extractDominantColorsFromImage(logoDataUrl);
+        setInstPrimaryColor(colors.primaryColor);
+        setInstSecondaryColor(colors.secondaryColor);
+        setInstAccentColor(colors.accentColor);
+      } catch (err) {
+        console.warn("Erro ao extrair cores do logotipo:", err);
+      } finally {
+        setIsExtractingColors(false);
+      }
+    }
+  };
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setInstLogo(reader.result as string);
+        const result = reader.result as string;
+        processLogoColors(result);
       };
       reader.readAsDataURL(file);
     }
@@ -663,7 +743,8 @@ export const EstruturaExplorer = ({
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setInstLogo(reader.result as string);
+        const result = reader.result as string;
+        processLogoColors(result);
       };
       reader.readAsDataURL(file);
     }
@@ -680,6 +761,11 @@ export const EstruturaExplorer = ({
       const payload = {
         nome: instNome.trim(),
         logo: instLogo,
+        primaryColor: instPrimaryColor || "#050b38",
+        secondaryColor: instSecondaryColor || "#0d1b54",
+        accentColor: instAccentColor || "#FFB800",
+        tipoInstituicao: selectedTipoInstituicao,
+        documentosNormativosConfigurados: getTipoInstituicaoConfig(selectedTipoInstituicao).documentosNormativosPadrao,
         tipoActividades: instTipoActividades.trim(),
         organograma: instOrganograma.trim(),
         composicao: instComposicao.trim(),
@@ -688,22 +774,63 @@ export const EstruturaExplorer = ({
         updatedAt: new Date().toISOString()
       };
       
+      let targetInstDocId = editingInstId;
+      let generatedStats: { orgaosCount: number; direcoesCount: number; deptsCount: number; repsCount: number } | null = null;
+
       if (editingInstId) {
         await firestoreService.instituicoes.update(editingInstId, payload);
-        alert("Instituição atualizada com sucesso!");
       } else {
         const docId = "inst_" + Date.now();
+        targetInstDocId = docId;
         await firestoreService.instituicoes.set(docId, {
           ...payload,
           id: docId,
           createdAt: new Date().toISOString()
         });
-        alert("Instituição registada com sucesso!");
       }
+
+      // Se a opção de gerar estrutura automaticamente com base no organograma estiver ativa
+      if (targetInstDocId && autoGenerateEstrutura && (instOrganograma.trim() || instComposicao.trim())) {
+        try {
+          generatedStats = await persistEstruturaFromOrganograma(
+            targetInstDocId,
+            instOrganograma.trim(),
+            instComposicao.trim()
+          );
+        } catch (errGen) {
+          console.warn("Aviso ao persistir estrutura baseada no organograma:", errGen);
+        }
+      }
+
+      // Mensagem detalhada de sucesso
+      if (editingInstId) {
+        alert("Instituição atualizada com sucesso!");
+      } else {
+        if (generatedStats && generatedStats.orgaosCount > 0) {
+          alert(
+            `Instituição registada com sucesso!\n\n` +
+            `A estrutura organizacional foi gerada com base no seu organograma:\n` +
+            `• ${generatedStats.orgaosCount} Órgãos\n` +
+            `• ${generatedStats.direcoesCount} Direções\n` +
+            `• ${generatedStats.deptsCount} Departamentos\n` +
+            `• ${generatedStats.repsCount} Repartições\n\n` +
+            `Todos os nós foram vinculados à nova instituição e já estão disponíveis em todo o sistema!`
+          );
+        } else {
+          alert("Instituição registada com sucesso!");
+        }
+      }
+
+      // Notificar o sistema caso a instituição ativa tenha sido editada
+      window.dispatchEvent(new CustomEvent("instituicao_updated", { detail: { id: targetInstDocId, payload } }));
+      notifyEstruturaUpdated();
       
       // Clear fields
       setInstNome("");
       setInstLogo("");
+      setInstPrimaryColor("#050b38");
+      setInstSecondaryColor("#0d1b54");
+      setInstAccentColor("#FFB800");
       setInstTipoActividades("");
       setInstOrganograma("");
       setInstComposicao("");
@@ -711,11 +838,49 @@ export const EstruturaExplorer = ({
       setInstDistrito("");
       setEditingInstId(null);
       setShowInstForm(false);
+      setShowOrganogramaPreview(false);
     } catch (err) {
       console.error(err);
       alert("Erro ao gravar a instituição.");
     } finally {
       setIsSavingInst(false);
+    }
+  };
+
+  // Sincronização manual de organograma para instituições já existentes ou novas
+  const handleSyncOrganogramaToEstrutura = async (inst: any) => {
+    if (!inst) return;
+    const orgText = (inst.organograma || "").trim();
+    const compText = (inst.composicao || "").trim();
+
+    if (!orgText && !compText) {
+      alert("Esta instituição não possui texto de organograma ou composição definido.");
+      return;
+    }
+
+    const conf = window.confirm(
+      `Deseja sincronizar a estrutura organizacional de "${inst.nome}" com base no seu organograma?\n\n` +
+      `Isto gerará os nós de Órgãos, Direções, Departamentos e Repartições na base de dados para esta instituição.`
+    );
+    if (!conf) return;
+
+    setIsSyncingOrganograma(true);
+    try {
+      const stats = await persistEstruturaFromOrganograma(inst.id, orgText, compText);
+      alert(
+        `Estrutura organizacional gerada com sucesso para "${inst.nome}"!\n\n` +
+        `• Órgãos criados: ${stats.orgaosCount}\n` +
+        `• Direções criadas: ${stats.direcoesCount}\n` +
+        `• Departamentos criados: ${stats.deptsCount}\n` +
+        `• Repartições criadas: ${stats.repsCount}\n\n` +
+        `A estrutura já está acessível no módulo de Gestão de Instituições e em todos os formulários.`
+      );
+      notifyEstruturaUpdated();
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao sincronizar a estrutura a partir do organograma.");
+    } finally {
+      setIsSyncingOrganograma(false);
     }
   };
 
@@ -829,6 +994,9 @@ export const EstruturaExplorer = ({
       setEditingInstId(currentInst.id);
       setInstNome(currentInst.nome);
       setInstLogo(currentInst.logo || "");
+      setInstPrimaryColor(currentInst.primaryColor || "#050b38");
+      setInstSecondaryColor(currentInst.secondaryColor || "#0d1b54");
+      setInstAccentColor(currentInst.accentColor || "#FFB800");
       setInstTipoActividades(currentInst.tipoActividades || "");
       setInstComposicao(currentInst.composicao || "");
       setInstOrganograma(currentInst.organograma || "");
@@ -840,6 +1008,8 @@ export const EstruturaExplorer = ({
       }
     }
   };
+
+  const [selectedTipoInstituicao, setSelectedTipoInstituicao] = useState<string>("");
 
   const renderInstitutionForm = () => {
     if (!showInstForm) return null;
@@ -860,6 +1030,24 @@ export const EstruturaExplorer = ({
         </div>
 
         <form onSubmit={handleSaveInst} className="space-y-4">
+          {/* Seletor de Tipo */}
+          <div>
+            <label className="block text-[11px] font-black text-slate-500 mb-2 uppercase tracking-wider">
+              Tipo de Instituição *
+            </label>
+            <select
+              required
+              value={selectedTipoInstituicao}
+              onChange={(e) => setSelectedTipoInstituicao(e.target.value)}
+              className="w-full p-3 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+            >
+              <option value="">-- Selecione o tipo de instituição --</option>
+              {Object.values(TIPOS_INSTITUICAO_CONFIG).map((tipo) => (
+                <option key={tipo.id} value={tipo.id}>{tipo.titulo}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Nome */}
             <div>
@@ -875,6 +1063,7 @@ export const EstruturaExplorer = ({
                 className="w-full p-3 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
               />
             </div>
+            {/* ... restante do formulário ... */}
 
             {/* Tipo de Atividades */}
             <div>
@@ -963,18 +1152,139 @@ export const EstruturaExplorer = ({
               />
             </div>
 
-            {/* Organograma descritivo */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-500 mb-2 uppercase tracking-wider">
-                Organograma / Hierarquia Geral
-              </label>
+            {/* Organograma descritivo & Modelos Estruturais */}
+            <div className="md:col-span-2 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 p-4 rounded-xl border border-blue-100/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block text-[11px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <ListTree size={14} className="text-blue-600" />
+                    Organograma / Estrutura Hierárquica da Nova Instituição
+                  </label>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    A estrutura de Órgãos, Direções, Departamentos e Repartições será construída com base neste organograma.
+                  </p>
+                </div>
+
+                {/* Modelos Rápidos */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <Wand2 size={12} className="text-indigo-600" /> Modelos:
+                  </span>
+                  {MODELOS_ORGANOGRAMA.map((modelo) => (
+                    <button
+                      key={modelo.id}
+                      type="button"
+                      onClick={() => {
+                        setInstOrganograma(modelo.texto);
+                        if (!instComposicao.trim()) {
+                          setInstComposicao(modelo.descricao);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-blue-600 hover:text-white text-slate-700 rounded-md border border-slate-200 shadow-2xs transition"
+                      title={modelo.descricao}
+                    >
+                      {modelo.titulo.split("/")[0].trim()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <textarea
-                placeholder="Escreva a estrutura hierárquica (ex: Direção Geral -> Gabinete -> Departamentos)"
+                placeholder={`Defina a hierarquia por ramos, usando a convenção:\nÓrgão -> Direção -> Departamento -> Repartição\n\nExemplo:\nÓrgão de Direção Máxima -> Reitoria -> Gabinete do Reitor -> Secretaria Geral\nServiços Centrais -> Direção de Administração -> Departamento de Recursos Humanos -> Repartição de Pessoal`}
                 value={instOrganograma}
                 onChange={(e) => setInstOrganograma(e.target.value)}
-                rows={3}
-                className="w-full p-3 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-none font-bold text-slate-800"
+                rows={5}
+                className="w-full p-3 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none font-mono text-slate-800 leading-relaxed"
               />
+
+              {/* Opções de Geração e Pré-visualização */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-blue-100/60">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoGenerateEstrutura}
+                    onChange={(e) => setAutoGenerateEstrutura(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                  />
+                  <span className="text-xs font-bold text-blue-950">
+                    Gerar automaticamente Órgãos, Direções e Departamentos na base de dados com base neste organograma
+                  </span>
+                </label>
+
+                {instOrganograma.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOrganogramaPreview(!showOrganogramaPreview)}
+                    className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-indigo-100 shadow-2xs transition ml-auto"
+                  >
+                    <ListTree size={13} />
+                    {showOrganogramaPreview ? "Ocultar Pré-visualização" : "Pré-visualizar Nós Identificados"}
+                  </button>
+                )}
+              </div>
+
+              {/* Pré-visualização dos nós detectados pelo parser */}
+              {showOrganogramaPreview && instOrganograma.trim() && (() => {
+                const parsed = parseOrganogramaToEstrutura(instOrganograma, instComposicao);
+                const totalOrgaos = parsed.length;
+                let totalDirecoes = 0;
+                let totalDepts = 0;
+                let totalReps = 0;
+
+                parsed.forEach((org) => {
+                  totalDirecoes += org.direcoes.length;
+                  org.direcoes.forEach((dir) => {
+                    totalDepts += dir.departamentos.length;
+                    dir.departamentos.forEach((dept) => {
+                      totalReps += dept.reparticoes.length;
+                    });
+                  });
+                });
+
+                return (
+                  <div className="bg-white p-3.5 rounded-lg border border-indigo-100 space-y-3 mt-2 shadow-2xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-extrabold text-slate-700">Resumo da Estrutura a Gerar:</span>
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-black border border-blue-200">
+                        {totalOrgaos} Órgãos
+                      </span>
+                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-black border border-indigo-200">
+                        {totalDirecoes} Direções
+                      </span>
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black border border-emerald-200">
+                        {totalDepts} Departamentos
+                      </span>
+                      {totalReps > 0 && (
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-black border border-purple-200">
+                          {totalReps} Repartições
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="max-h-40 overflow-y-auto space-y-2 pr-1 text-xs">
+                      {parsed.map((org, oIdx) => (
+                        <div key={oIdx} className="bg-slate-50 p-2 rounded border border-slate-100">
+                          <div className="font-extrabold text-blue-900 flex items-center gap-1.5">
+                            <Building size={12} className="text-blue-600" /> {org.nome}
+                          </div>
+                          <div className="pl-4 mt-1 space-y-1 text-slate-600 text-[11px]">
+                            {org.direcoes.map((dir, dIdx) => (
+                              <div key={dIdx}>
+                                <span className="font-bold text-slate-800">• {dir.nome}</span>
+                                {dir.departamentos.length > 0 && (
+                                  <span className="text-slate-500 text-[10px] ml-1.5">
+                                    ({dir.departamentos.map((dp) => dp.nome).join(", ")})
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -989,16 +1299,60 @@ export const EstruturaExplorer = ({
               className="border-2 border-dashed border-slate-200 hover:border-blue-500 rounded-2xl p-6 text-center transition flex flex-col items-center justify-center gap-3 cursor-pointer bg-slate-50/50"
             >
               {instLogo ? (
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-3 w-full">
                   <img
                     src={instLogo}
                     alt="Previsão do Logotipo"
                     referrerPolicy="no-referrer"
                     className="h-16 object-contain rounded bg-white p-1 border border-slate-200"
                   />
+
+                  {/* Cores Extraídas Automaticamente do Logótipo */}
+                  <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm w-full max-w-sm">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <Palette size={14} className="text-blue-600" />
+                      <span>Cores da Área de Trabalho (Extraídas do Logotipo)</span>
+                      {isExtractingColors && <Loader2 size={12} className="animate-spin text-blue-500 ml-1" />}
+                    </div>
+                    <div className="flex items-center justify-center gap-3 w-full">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className="w-7 h-7 rounded-lg border border-slate-300 shadow-sm"
+                          style={{ backgroundColor: instPrimaryColor }}
+                          title={`Cor Primária: ${instPrimaryColor}`}
+                        />
+                        <span className="text-[9px] font-semibold text-slate-500 mt-1">Primária</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div
+                          className="w-7 h-7 rounded-lg border border-slate-300 shadow-sm"
+                          style={{ backgroundColor: instSecondaryColor }}
+                          title={`Cor Secundária: ${instSecondaryColor}`}
+                        />
+                        <span className="text-[9px] font-semibold text-slate-500 mt-1">Secundária</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div
+                          className="w-7 h-7 rounded-lg border border-slate-300 shadow-sm"
+                          style={{ backgroundColor: instAccentColor }}
+                          title={`Cor de Destaque: ${instAccentColor}`}
+                        />
+                        <span className="text-[9px] font-semibold text-slate-500 mt-1">Destaque</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center">
+                      Esta paleta será aplicada automaticamente ao cabeçalho e ambiente desta instituição.
+                    </p>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => setInstLogo("")}
+                    onClick={() => {
+                      setInstLogo("");
+                      setInstPrimaryColor("#050b38");
+                      setInstSecondaryColor("#0d1b54");
+                      setInstAccentColor("#FFB800");
+                    }}
                     className="text-[10px] text-red-500 hover:text-red-700 font-bold"
                   >
                     Remover Logotipo
@@ -1107,7 +1461,7 @@ export const EstruturaExplorer = ({
 
           {/* Seletor rápido para alternar e explorar qualquer instituição */}
           {activeTab === "estrutura" && instituicoes.length > 0 && (
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 ml-auto">
+            <div className="flex flex-wrap items-center gap-2.5 text-xs font-bold text-slate-700 ml-auto">
               <span className="text-slate-400 text-[10px] uppercase tracking-wider font-extrabold hidden sm:inline">Explorar Instituição:</span>
               <select
                 value={selectedInstId}
@@ -1123,6 +1477,27 @@ export const EstruturaExplorer = ({
                   </option>
                 ))}
               </select>
+
+              {/* Indicador e Ativador da Instituição Ativa no Sistema */}
+              {selectedInstId === getActiveInstituicaoId() ? (
+                <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl text-[11px] font-black">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Ativa no Menu Principal
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveInstituicaoId(selectedInstId);
+                    notifyEstruturaUpdated();
+                  }}
+                  className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 px-3 py-1 rounded-xl text-[11px] font-bold transition shadow-xs cursor-pointer"
+                  title="Definir esta instituição como a ativa para visualização de menus e operações no sistema"
+                >
+                  <Check size={13} />
+                  <span>Ativar no Menu do Sistema</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1206,24 +1581,45 @@ export const EstruturaExplorer = ({
                 >
                   <div className="space-y-4">
                     {/* Logotipo e Nome */}
-                    <div className="flex items-center gap-4 border-b border-gray-50 pb-4">
-                      {inst.logo ? (
-                        <img
-                          src={inst.logo}
-                          alt={inst.nome}
-                          referrerPolicy="no-referrer"
-                          className="w-12 h-12 object-contain rounded-lg bg-slate-50 p-1 shrink-0 group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <Building size={20} />
+                    <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                      <div className="flex items-center gap-4">
+                        {inst.logo ? (
+                          <img
+                            src={inst.logo}
+                            alt={inst.nome}
+                            referrerPolicy="no-referrer"
+                            className="w-12 h-12 object-contain rounded-lg bg-slate-50 p-1 shrink-0 group-hover:scale-105 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Building size={20} />
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="font-extrabold text-blue-900 text-base leading-tight group-hover:text-blue-700 transition-colors">{inst.nome}</h3>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                            {inst.tipoActividades || "Sem tipo de atividade"}
+                          </p>
                         </div>
-                      )}
-                      <div>
-                        <h3 className="font-extrabold text-blue-900 text-base leading-tight group-hover:text-blue-700 transition-colors">{inst.nome}</h3>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                          {inst.tipoActividades || "Sem tipo de atividade"}
-                        </p>
+                      </div>
+                      
+                      {/* Badge com a Paleta de Cores Extraída do Logotipo */}
+                      <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100" title="Cores extraídas do logotipo">
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-xs"
+                          style={{ backgroundColor: inst.primaryColor || "#050b38" }}
+                          title={`Primária: ${inst.primaryColor || "#050b38"}`}
+                        />
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-xs"
+                          style={{ backgroundColor: inst.secondaryColor || "#0d1b54" }}
+                          title={`Secundária: ${inst.secondaryColor || "#0d1b54"}`}
+                        />
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-xs"
+                          style={{ backgroundColor: inst.accentColor || "#FFB800" }}
+                          title={`Destaque: ${inst.accentColor || "#FFB800"}`}
+                        />
                       </div>
                     </div>
 
@@ -1277,12 +1673,27 @@ export const EstruturaExplorer = ({
                       >
                         Registar Admin
                       </button>
+                      {(inst.organograma || inst.composicao) && (
+                        <button
+                          type="button"
+                          onClick={() => handleSyncOrganogramaToEstrutura(inst)}
+                          disabled={isSyncingOrganograma}
+                          className="text-xs text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-xl transition font-bold cursor-pointer flex items-center gap-1"
+                          title="Gerar / Sincronizar Estrutura a partir do Organograma"
+                        >
+                          <ListTree size={14} className={isSyncingOrganograma ? "animate-spin" : "text-indigo-600"} />
+                          <span className="hidden sm:inline">Gerar Estrutura</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
                           setEditingInstId(inst.id);
                           setInstNome(inst.nome);
                           setInstLogo(inst.logo || "");
+                          setInstPrimaryColor(inst.primaryColor || "#050b38");
+                          setInstSecondaryColor(inst.secondaryColor || "#0d1b54");
+                          setInstAccentColor(inst.accentColor || "#FFB800");
                           setInstTipoActividades(inst.tipoActividades || "");
                           setInstComposicao(inst.composicao || "");
                           setInstOrganograma(inst.organograma || "");
@@ -1421,9 +1832,31 @@ export const EstruturaExplorer = ({
                     </p>
                   )}
                   {currentInst.organograma && (
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      <span className="font-extrabold text-slate-700">Organograma Geral: </span> {currentInst.organograma}
-                    </p>
+                    <div className="bg-white/90 p-3 rounded-xl border border-slate-200/80 space-y-2 mt-2 shadow-2xs">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-black text-blue-950 flex items-center gap-1.5">
+                          <ListTree size={14} className="text-blue-600" />
+                          Organograma Hierárquico Base:
+                        </span>
+                        {currentInst.id !== "isps" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSyncOrganogramaToEstrutura(currentInst);
+                            }}
+                            disabled={isSyncingOrganograma}
+                            className="text-[11px] font-bold text-blue-700 hover:text-white hover:bg-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <RefreshCw size={12} className={isSyncingOrganograma ? "animate-spin" : ""} />
+                            {isSyncingOrganograma ? "A Sincronizar..." : "Sincronizar Nós na Base de Dados"}
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-700 font-mono whitespace-pre-line bg-slate-50 p-2.5 rounded-lg border border-slate-100 max-h-32 overflow-y-auto leading-relaxed">
+                        {currentInst.organograma}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1512,40 +1945,80 @@ export const EstruturaExplorer = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {mergedOrgaos.map((dir: any, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setSelectedUnit(dir);
-                  setShowRegistoForm(false);
-                }}
-                className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 text-center transition-all flex flex-col items-center justify-between cursor-pointer relative group min-h-[180px]"
-              >
-                {dir.isCustom && (
-                  <button
-                    onClick={(e) => handleDeleteOrgan(dir.id, e)}
-                    className="absolute top-3 right-3 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition duration-200"
-                    title="Eliminar Órgão"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-                
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-4">
-                    <Building size={24} />
-                  </div>
-                  <h3 className="font-bold text-blue-900 text-lg leading-tight">
-                    {dir.title}
-                  </h3>
-                </div>
-                <p className="text-xs text-gray-400 font-medium tracking-widest mt-4">
-                  {dir.type}
+          {mergedOrgaos.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-dashed border-slate-300 text-center space-y-4 max-w-xl mx-auto my-6">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                <ListTree size={28} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-blue-900">
+                  Nenhum Órgão Registado Ainda
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {(() => {
+                    const currentInst = instituicoes.find((i) => i.id === selectedInstId);
+                    if (currentInst && (currentInst.organograma || currentInst.composicao)) {
+                      return "Esta instituição possui um organograma definido. Pode gerar toda a estrutura de órgãos, direções e departamentos automaticamente com um clique.";
+                    }
+                    return "Pode registar novos órgãos manualmente ou definir o organograma nas informações da instituição.";
+                  })()}
                 </p>
               </div>
-            ))}
-          </div>
+
+              {(() => {
+                const currentInst = instituicoes.find((i) => i.id === selectedInstId);
+                if (currentInst && (currentInst.organograma || currentInst.composicao)) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleSyncOrganogramaToEstrutura(currentInst)}
+                      disabled={isSyncingOrganograma}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 mx-auto transition shadow-sm cursor-pointer"
+                    >
+                      <Wand2 size={15} className={isSyncingOrganograma ? "animate-spin" : ""} />
+                      {isSyncingOrganograma ? "A Gerar Estrutura..." : "Gerar Estrutura a partir do Organograma"}
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {mergedOrgaos.map((dir: any, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setSelectedUnit(dir);
+                    setShowRegistoForm(false);
+                  }}
+                  className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 text-center transition-all flex flex-col items-center justify-between cursor-pointer relative group min-h-[180px]"
+                >
+                  {dir.isCustom && (
+                    <button
+                      onClick={(e) => handleDeleteOrgan(dir.id, e)}
+                      className="absolute top-3 right-3 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition duration-200"
+                      title="Eliminar Órgão"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                  
+                  <div className="flex flex-col items-center">
+                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-4">
+                      <Building size={24} />
+                    </div>
+                    <h3 className="font-bold text-blue-900 text-lg leading-tight">
+                      {dir.title}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gray-400 font-medium tracking-widest mt-4">
+                    {dir.type}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-6">
@@ -1745,12 +2218,28 @@ export const EstruturaExplorer = ({
                         <Trash2 size={16} />
                       </button>
 
-                      <h5 className="font-black text-blue-900 text-xl mb-3 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm shadow-md">
-                          {idx + 1}
-                        </div>
-                        {dir.title}
-                      </h5>
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pr-12">
+                        <h5 className="font-black text-blue-900 text-xl flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm shadow-md">
+                            {idx + 1}
+                          </div>
+                          {dir.title}
+                        </h5>
+
+                        {/* Botão de Acesso Operacional à Direção */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedInstId) setActiveInstituicaoId(selectedInstId);
+                            onNavigateToWorkspace?.(dirTitle, selectedInstId);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                          title={`Aceder e operar a área de trabalho da direção: ${dirTitle}`}
+                        >
+                          <ExternalLink size={13} />
+                          <span>Operar Direção</span>
+                        </button>
+                      </div>
 
                       {/* Diretor e Contactos */}
                       {(dir.responsavel || dir.email || dir.telefone || dir.missao) && (
@@ -1829,9 +2318,23 @@ export const EstruturaExplorer = ({
                                 >
                                   <div>
                                     <div className="flex justify-between items-start gap-2 border-b border-gray-50 pb-2 mb-4">
-                                      <p className="font-bold text-gray-800 text-base leading-tight">
-                                        {dept.title}
-                                      </p>
+                                      <div className="space-y-1">
+                                        <p className="font-bold text-gray-800 text-base leading-tight">
+                                          {dept.title}
+                                        </p>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (selectedInstId) setActiveInstituicaoId(selectedInstId);
+                                            onNavigateToWorkspace?.(dept.title, selectedInstId);
+                                          }}
+                                          className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                                          title={`Aceder à área de trabalho do departamento: ${dept.title}`}
+                                        >
+                                          <ExternalLink size={11} />
+                                          <span>Operar Departamento</span>
+                                        </button>
+                                      </div>
                                       {dept.isCustom && (
                                         <button
                                           type="button"
@@ -1858,7 +2361,18 @@ export const EstruturaExplorer = ({
                                               >
                                                 <div className="flex items-start gap-2.5">
                                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-300 mt-1.5 shrink-0"></div>
-                                                  <span className="leading-tight">{rep.name || rep}</span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      if (selectedInstId) setActiveInstituicaoId(selectedInstId);
+                                                      onNavigateToWorkspace?.(rep.name || rep, selectedInstId);
+                                                    }}
+                                                    className="leading-tight text-left hover:text-blue-700 hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
+                                                    title={`Aceder à área de trabalho do setor: ${rep.name || rep}`}
+                                                  >
+                                                    <span>{rep.name || rep}</span>
+                                                    <ExternalLink size={10} className="text-blue-500 opacity-60 shrink-0" />
+                                                  </button>
                                                 </div>
                                                 {rep.isCustom && (
                                                   <button

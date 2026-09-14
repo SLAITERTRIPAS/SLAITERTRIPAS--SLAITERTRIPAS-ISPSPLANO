@@ -53,14 +53,60 @@ export const compareDirections = (a: string, b: string): number => {
   return String(a || "").localeCompare(String(b || ""));
 };
 
+export function getActMonthIndex(act: any): number {
+  if (!act) return 13;
+  const monthOrder: Record<string, number> = {
+    Janeiro: 1,
+    Fevereiro: 2,
+    Março: 3,
+    Abril: 4,
+    Maio: 5,
+    Junho: 6,
+    Julho: 7,
+    Agosto: 8,
+    Setembro: 9,
+    Outubro: 10,
+    Novembro: 11,
+    Dezembro: 12,
+  };
+  const months = Array.isArray(act.mesesRealizacao)
+    ? act.mesesRealizacao
+    : [act.mesRealizacao || act.mes].filter(Boolean);
+  if (months.length > 0) {
+    const indices = months
+      .map((m: string) => monthOrder[m] || 13)
+      .sort((a: number, b: number) => a - b);
+    if (indices[0] <= 12) return indices[0];
+  }
+  const trimestres = Array.isArray(act.trimestres)
+    ? act.trimestres
+    : [act.trimestre].filter(Boolean);
+  if (trimestres.includes("I") || trimestres.includes("1º Trimestre"))
+    return 1;
+  if (trimestres.includes("II") || trimestres.includes("2º Trimestre"))
+    return 4;
+  if (trimestres.includes("III") || trimestres.includes("3º Trimestre"))
+    return 7;
+  if (trimestres.includes("IV") || trimestres.includes("4º Trimestre"))
+    return 10;
+  return 13;
+}
+
 /**
- * Ordenação estritamente numérica para planos de setor e listas de atividades.
- * Ordena por: N/O -> Código Numérico -> Data de Criação -> Título
+ * Ordenação estritamente por Mês de Realização e sequencial para planos de setor e listas de atividades.
+ * Ordena por: Mês de Realização (Janeiro a Dezembro) -> N/O -> Código Numérico -> Data de Criação -> Título
  */
 export const compareActivitiesNumericOrder = (a: any, b: any): number => {
   if (!a && !b) return 0;
   if (!a) return 1;
   if (!b) return -1;
+
+  // 1. Mês de Realização (Janeiro a Dezembro)
+  const monthA = getActMonthIndex(a);
+  const monthB = getActMonthIndex(b);
+  if (monthA !== monthB) {
+    return monthA - monthB;
+  }
 
   const getNumericSeq = (x: any): number => {
     // 1. Tentar campos diretos de número sequencial (no, numeroActividade, nActividade, ordem)
@@ -141,7 +187,7 @@ export const compareActivitiesStandardOrder = (
     if (compDept !== 0) return compDept;
   }
 
-  // 3. Por Setor / Repartição (cada setor tem a sua própria contagem sequencial isolada)
+  // 3. Por Setor / Repartição (cada setor tem a sua própria contagem isolada)
   const sectorA = String(a.setor || a.sector || a.reparticao || "").trim();
   const sectorB = String(b.setor || b.sector || b.reparticao || "").trim();
   if (sectorA !== sectorB) {
@@ -149,7 +195,13 @@ export const compareActivitiesStandardOrder = (
     if (compSector !== 0) return compSector;
   }
 
-  // 4. Ordem Numérica / N/O (Número de Ordem - N.º Sequencial da Atividade: 001, 002, 003...)
+  // 4. Mês de Realização (Organização por Mês de Realização - Janeiro a Dezembro)
+  const getM = getActMonthIdxFunc || getActMonthIndex;
+  const monthA = getM(a);
+  const monthB = getM(b);
+  if (monthA !== monthB) return monthA - monthB;
+
+  // 5. Ordem Numérica / N/O (Número de Ordem - N.º Sequencial da Atividade: 001, 002, 003...)
   const getNoNum = (x: any) => {
     const val = x.no ?? x.numeroActividade ?? x.nActividade ?? x.numeroDirecao;
     if (val !== undefined && val !== null && val !== "") {
@@ -167,52 +219,7 @@ export const compareActivitiesStandardOrder = (
   const compNo = strNoA.localeCompare(strNoB, undefined, { numeric: true });
   if (compNo !== 0) return compNo;
 
-  // 3. Mês de Realização (Organização por Mês de Realização - Janeiro a Dezembro)
-  const getM =
-    getActMonthIdxFunc ||
-    ((act: any) => {
-      const monthOrder: Record<string, number> = {
-        Janeiro: 1,
-        Fevereiro: 2,
-        Março: 3,
-        Abril: 4,
-        Maio: 5,
-        Junho: 6,
-        Julho: 7,
-        Agosto: 8,
-        Setembro: 9,
-        Outubro: 10,
-        Novembro: 11,
-        Dezembro: 12,
-      };
-      const months = Array.isArray(act.mesesRealizacao)
-        ? act.mesesRealizacao
-        : [act.mesRealizacao || act.mes].filter(Boolean);
-      if (months.length > 0) {
-        const indices = months
-          .map((m: string) => monthOrder[m] || 13)
-          .sort((x: number, y: number) => x - y);
-        if (indices[0] <= 12) return indices[0];
-      }
-      const trimestres = Array.isArray(act.trimestres)
-        ? act.trimestres
-        : [act.trimestre].filter(Boolean);
-      if (trimestres.includes("I") || trimestres.includes("1º Trimestre"))
-        return 1;
-      if (trimestres.includes("II") || trimestres.includes("2º Trimestre"))
-        return 4;
-      if (trimestres.includes("III") || trimestres.includes("3º Trimestre"))
-        return 7;
-      if (trimestres.includes("IV") || trimestres.includes("4º Trimestre"))
-        return 10;
-      return 13;
-    });
-
-  const monthA = getM(a);
-  const monthB = getM(b);
-  if (monthA !== monthB) return monthA - monthB;
-
-  // 4. Código da Atividade
+  // 6. Código da Atividade
   const codA = String(a.codigoActividade || a.referencia || a.codigo || "");
   const codB = String(b.codigoActividade || b.referencia || b.codigo || "");
   const compCod = codA.localeCompare(codB, undefined, {
@@ -221,7 +228,7 @@ export const compareActivitiesStandardOrder = (
   });
   if (compCod !== 0) return compCod;
 
-  // 5. Valor Total da Atividade
+  // 7. Valor Total da Atividade
   const getTot = (act: any): number => {
     if (!act) return 0;
     const rubricVal =
@@ -672,44 +679,6 @@ export function isDuplicateActivity(act: any, allActs: any[]): boolean {
   });
 
   return matches.length > 0;
-}
-
-export function getActMonthIndex(act: any): number {
-  const monthOrder: Record<string, number> = {
-    Janeiro: 1,
-    Fevereiro: 2,
-    Março: 3,
-    Abril: 4,
-    Maio: 5,
-    Junho: 6,
-    Julho: 7,
-    Agosto: 8,
-    Setembro: 9,
-    Outubro: 10,
-    Novembro: 11,
-    Dezembro: 12,
-  };
-  const months = Array.isArray(act.mesesRealizacao)
-    ? act.mesesRealizacao
-    : [act.mesRealizacao || act.mes].filter(Boolean);
-  if (months.length > 0) {
-    const indices = months
-      .map((m: string) => monthOrder[m] || 13)
-      .sort((a: number, b: number) => a - b);
-    if (indices[0] <= 12) return indices[0];
-  }
-  const trimestres = Array.isArray(act.trimestres)
-    ? act.trimestres
-    : [act.trimestre].filter(Boolean);
-  if (trimestres.includes("I") || trimestres.includes("1º Trimestre"))
-    return 1;
-  if (trimestres.includes("II") || trimestres.includes("2º Trimestre"))
-    return 4;
-  if (trimestres.includes("III") || trimestres.includes("3º Trimestre"))
-    return 7;
-  if (trimestres.includes("IV") || trimestres.includes("4º Trimestre"))
-    return 10;
-  return 13;
 }
 
 export function formatSafeDate(dateVal: any): string {

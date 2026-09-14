@@ -42,7 +42,9 @@ import {
   MESES,
   VIATURAS,
   FUNCIONARIOS,
+  getDepartamentosByDirecaoKey,
 } from "../../constants/formOptions";
+import { getReparticoesPorDepartamento } from "../../lib/instituicaoEstruturaService";
 import { EFETIVO_GERAL_DATA } from "../../constants/colaboradoresList";
 import {
   getUnifiedProducts,
@@ -3847,9 +3849,10 @@ export default function ActivityForm({
                         (k) => k.toLowerCase() === direction.toLowerCase(),
                       );
                       const backupList = depKey ? DEPARTAMENTOS[depKey] : [];
+                      const dynamicList = getDepartamentosByDirecaoKey(direction);
 
-                      const finalDeps = list || backupList || [];
-                      if (finalDeps.length === 0) {
+                      const finalDeps = (list && list.length > 0) ? list : (backupList.length > 0 ? backupList : dynamicList);
+                      if (!finalDeps || finalDeps.length === 0) {
                         return (
                           <option disabled>
                             Sem departamentos cadastrados
@@ -3938,10 +3941,10 @@ export default function ActivityForm({
                         const correctKey = Object.keys(REPARTICOES).find(
                           (k) => k.toLowerCase() === dept.toLowerCase(),
                         );
-                        const finalReps = correctKey
-                          ? REPARTICOES[correctKey]
-                          : [];
-                        if (finalReps.length === 0) {
+                        const staticReps = correctKey ? REPARTICOES[correctKey] : [];
+                        const dynamicReps = getReparticoesPorDepartamento(dept);
+                        const finalReps = staticReps.length > 0 ? staticReps : dynamicReps;
+                        if (!finalReps || finalReps.length === 0) {
                           return (
                             <option disabled>
                               Sem repartições cadastradas

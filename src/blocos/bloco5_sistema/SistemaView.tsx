@@ -40,6 +40,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { IntelligentDiagnosticsView } from "./IntelligentDiagnosticsView";
+import SobreSistemaView from "./SobreSistemaView";
+import BiografiaView from "./BiografiaView";
 import ManualInstrucoesView from "../bloco8_gerais/ManualInstrucoesView";
 import CalendarView from "../bloco5_sistema/CalendarView";
 import { collection, getDocs } from "firebase/firestore";
@@ -96,6 +98,7 @@ export default function SistemaView({
   colaboradores = [],
   onShowAlert,
   initialActiveItem,
+  onNavigateToWorkspace,
 }: {
   onBack: () => void;
   onLogout: () => void;
@@ -113,6 +116,7 @@ export default function SistemaView({
   colaboradores?: any[];
   onShowAlert?: (msg: string, type?: string) => void;
   initialActiveItem?: string;
+  onNavigateToWorkspace?: (workspaceTitle: string, instituicaoId?: string) => void;
 }) {
   const showAlert = (msg: string, type: "success" | "error" | "info" = "success") => {
     if (onShowAlert) {
@@ -201,6 +205,7 @@ export default function SistemaView({
   const [itLinkedin, setItLinkedin] = useState("linkedin.com/in/fttripas");
   const [itFacebook, setItFacebook] = useState("facebook.com/fttripas");
   const [itWeb, setItWeb] = useState("www.fttripas.com");
+  const [systemLogo, setSystemLogo] = useState<string | null>(null);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
@@ -236,6 +241,7 @@ export default function SistemaView({
           if (data.itLinkedin) setItLinkedin(data.itLinkedin);
           if (data.itFacebook) setItFacebook(data.itFacebook);
           if (data.itWeb) setItWeb(data.itWeb);
+          if (data.systemLogo) setSystemLogo(data.systemLogo);
         } else {
           // Fallback to localStorage for migration or defaults
           const savedName = localStorage.getItem("proprietarioName");
@@ -246,6 +252,17 @@ export default function SistemaView({
           const savedLinkedin = localStorage.getItem("itLinkedin");
           const savedFacebook = localStorage.getItem("itFacebook");
           const savedWeb = localStorage.getItem("itWeb");
+          const savedLogo = localStorage.getItem("systemLogo");
+
+          if (savedName) setOwnerName(savedName);
+          if (savedCargo) setOwnerCargo(savedCargo);
+          if (savedPhoto) setOwnerPhoto(savedPhoto);
+          if (savedEmail) setItEmail(savedEmail);
+          if (savedWhatsapp) setItWhatsapp(savedWhatsapp);
+          if (savedLinkedin) setItLinkedin(savedLinkedin);
+          if (savedFacebook) setItFacebook(savedFacebook);
+          if (savedWeb) setItWeb(savedWeb);
+          if (savedLogo) setSystemLogo(savedLogo);
 
           if (savedName) setOwnerName(savedName);
           if (savedCargo) setOwnerCargo(savedCargo);
@@ -296,6 +313,7 @@ export default function SistemaView({
         itLinkedin: itLinkedin,
         itFacebook: itFacebook,
         itWeb: itWeb,
+        systemLogo: systemLogo,
       });
 
       // Update admin user data (including password)
@@ -317,6 +335,7 @@ export default function SistemaView({
       localStorage.setItem("itLinkedin", itLinkedin);
       localStorage.setItem("itFacebook", itFacebook);
       localStorage.setItem("itWeb", itWeb);
+      if (systemLogo) localStorage.setItem("systemLogo", systemLogo);
 
       showAlert(
         "Informações guardadas e sincronizadas com sucesso em todos os links!",
@@ -580,17 +599,16 @@ export default function SistemaView({
     (user?.cargoChefia || "").toLowerCase().includes("ugea");
 
   const institutionalAdminMenuItems = [
-    { title: "Gestão das Instituições", icon: Building },
-    { title: "Centro de Mensagens", icon: MessageSquare },
-    { title: "Histórico de Chefias", icon: Clock },
     { title: "Calendário", icon: Calendar },
+    { title: "Configurações", icon: ShieldCheck },
+    { title: "Centro de Mensagens", icon: MessageSquare },
     { title: "Sessões Ativas", icon: UserCheck },
     { title: "Log de Actividade", icon: Clock },
     { title: "Gestão de Utilizadores", icon: Users },
     { title: "Gestão de Produtos e Preços", icon: Box },
-    { title: "Backup", icon: HardDrive },
-    { title: "Limpar Base de Dados", icon: RefreshCw },
-    { title: "Configurações", icon: ShieldCheck },
+    { title: "Histórico de Chefias", icon: Clock },
+    { title: "Atualização", icon: Zap },
+    { title: "Base de Dados", icon: Database },
     { title: "Sobre o Sistema", icon: Info },
   ];
 
@@ -609,7 +627,6 @@ export default function SistemaView({
       hidden: isGlobalAdmin ? false : !(canManageUsers || isHRBoss),
     },
     { title: "Base de Dados", icon: Database, hidden: isGlobalAdmin ? false : !canManageUsers },
-    { title: "Estrutura Geral da Instituição", icon: Network },
     { title: "Gestão das Instituições", icon: Building, hidden: !isGlobalAdmin },
     { title: "Relatórios", icon: FileText },
     { title: "Parte Teórica", icon: BookOpen, type: "group" },
@@ -1236,76 +1253,7 @@ export default function SistemaView({
         return (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 space-y-6">
-              <div className="bg-slate-50/50 p-12 rounded-[2.5rem] shadow-sm border border-gray-100">
-                <h2 className="text-2xl font-black text-blue-900 mb-6 tracking-widest">
-                  Sobre o SIGEP
-                </h2>
-                <button
-                  onClick={async () => {
-                    const result = await firestoreService.initializeAdmin({
-                      id: "ST849547771",
-                      uid: "ST849547771",
-                      name: "SLAITER TRIPAS",
-                      nome: "SLAITER TRIPAS",
-                      designacao: "SLAITER TRIPAS",
-                      email: "slaitertripas@gmail.com",
-                      role: "Administrador",
-                      cargo: "proprietario e Administrador do Sistema",
-                      funcao: "proprietario e Administrador do Sistema",
-                      orgao: "proprietario",
-                      unidade: "proprietario",
-                      unidadeOrganica: "proprietario",
-                      direcao: "proprietario",
-                      departamento: "proprietario",
-                      status: "Ativo / proprietario",
-                      password: adminPassword || "231383ft",
-                      mustChangePassword: false,
-                      isProgrammer: true,
-                      isOwner: true,
-                    });
-                    alert(
-                      result.success
-                        ? "Admin atualizado!"
-                        : "Erro: " + result.error,
-                    );
-                  }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 mb-6"
-                >
-                  Atualizar Dados do Administrador
-                </button>
-                <div className="text-justify text-sm leading-relaxed space-y-4 text-gray-700">
-                  <p>
-                    O{" "}
-                    <strong>
-                      SIGEP (Sistema Integrado de Gestão de Processo)
-                    </strong>{" "}
-                    é uma solução tecnológica abrangente e inovadora
-                    desenvolvida especificamente para o{" "}
-                    <strong>
-                      {user?.instituicaoNome || "Instituto Superior Politécnico de Songo"}
-                    </strong>
-                    . Esta é uma instituição de referência focada na excelência e inovação de processos.
-                  </p>
-                  <p>
-                    O objetivo central do SIGEP é unificar, otimizar e
-                    modernizar a gestão institucional, unindo processos
-                    <strong>
-                      {" "}
-                      académicos, administrativos e financeiros
-                    </strong>{" "}
-                    numa plataforma única e coesa. Este sistema surge para
-                    colmatar as limitações de ferramentas anteriores,
-                    assegurando transparência, mobilidade, eficiência e maior
-                    segurança da informação.
-                  </p>
-                  <p>
-                    Com múltiplos módulos flexíveis e um modelo de controlo de
-                    acessos funcional, o SIGEP fortalece a transição digital do{" "}
-                    {user?.instituicaoNome || "Songo"}, alinhando a instituição com padrões internacionais de
-                    gestão académica sustentável e em sintonia com os desafios e metas institucionais.
-                  </p>
-                </div>
-              </div>
+              <SobreSistemaView />
 
               {/* Início de Actividade Rápida */}
               <div className="bg-slate-50/50 p-8 rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
@@ -1378,7 +1326,10 @@ export default function SistemaView({
             <div className="lg:col-span-4 space-y-6">
               {!showOwnerDetails ? (
                 <div
-                  onClick={() => setShowOwnerDetails(true)}
+                  onClick={() => {
+                    setShowOwnerDetails(true);
+                    setActiveItem("Configurações");
+                  }}
                   className="bg-[#000066] p-8 rounded-[2.5rem] text-white text-center cursor-pointer hover:bg-blue-900 transition-colors shadow-lg relative group"
                 >
                   <div className="w-24 h-24 bg-white/10 rounded-full mx-auto mb-4 border border-white/20 overflow-hidden">
@@ -1428,8 +1379,11 @@ export default function SistemaView({
                         />
                       )}
                     </div>
-                    <h3 className="text-xl font-black text-gray-900 text-center">
-                      {ownerName}
+                    <h3
+                      onClick={() => setActiveItem("Configurações")}
+                      className="text-xl font-black text-gray-900 text-center cursor-pointer hover:text-blue-600 transition-colors"
+                    >
+                      SOBRE {ownerName}
                     </h3>
                     <p className="text-xs text-blue-600 font-bold mb-6 text-center tracking-widest">
                       {ownerCargo}
@@ -1478,7 +1432,14 @@ export default function SistemaView({
                     </div>
                   </div>
 
-                  <div className="mt-8 pt-4 border-t border-gray-100">
+                  <div className="mt-8 pt-4 border-t border-gray-100 space-y-3">
+                    <button
+                      onClick={() => setActiveItem("Biografia do Proprietário")}
+                      className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs hover:bg-emerald-700 transition-colors shadow-md flex items-center justify-center gap-2"
+                    >
+                      <BookOpen size={14} />
+                      Biografia do Proprietário
+                    </button>
                     <button
                       onClick={() => {
                         setShowOwnerDetails(false);
@@ -1500,6 +1461,7 @@ export default function SistemaView({
           <EstruturaExplorer
             loggedUser={user}
             initialTab={activeItem === "Estrutura Geral da Instituição" ? "estrutura" : "instituicoes"}
+            onNavigateToWorkspace={onNavigateToWorkspace}
             onRegistarAdmin={(instId) => {
               setPendingInstituicaoId(instId);
               setRegistrationFormType("admin_instituicao");
@@ -1507,12 +1469,13 @@ export default function SistemaView({
             }}
           />
         );
-      case "Relatórios":
+      case "Biografia do Proprietário":
         return (
-          <ReportsView
-            user={user}
-            onShowAlert={(msg) => alert(msg)}
-            onBack={() => setActiveItem("Sobre o Sistema")}
+          <BiografiaView
+            onBack={() => {
+              setShowOwnerDetails(true);
+              setActiveItem("Sobre o Sistema");
+            }}
           />
         );
       case "Monografia":
@@ -1546,6 +1509,7 @@ export default function SistemaView({
           />
         );
       case "Log de Actividade":
+      case "Log de Atividade":
         return <RecentActivityLog colaboradores={colaboradores} />;
       case "Atualização":
         return (
@@ -2067,9 +2031,35 @@ export default function SistemaView({
                           />
                         </label>
                       </div>
+                      <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl overflow-hidden flex items-center justify-center relative group">
+                        {systemLogo ? (
+                          <img
+                            src={systemLogo}
+                            className="w-full h-full object-contain p-1"
+                          />
+                        ) : (
+                          <Building size={24} className="text-gray-300" />
+                        )}
+                        <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                          <Plus size={20} className="text-white" />
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChangeCapture={(e) => {
+                              const file = e.currentTarget.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => setSystemLogo(reader.result as string);
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
                       <div>
                         <p className="text-sm font-bold text-gray-700">
-                          Foto de Perfil
+                          Foto e Logo
                         </p>
                         <p className="text-[10px] text-gray-400">
                           PROPRIETÁRIO • PROGRAMADOR

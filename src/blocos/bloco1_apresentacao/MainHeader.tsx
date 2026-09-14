@@ -23,6 +23,7 @@ import {
   Cpu,
   Sparkles,
   FileText,
+  Building,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import NotificationCenter from "../bloco5_sistema/NotificationCenter";
@@ -30,6 +31,7 @@ import ChangePasswordModal from "./ChangePasswordModal";
 import ShareProcessoModal from "../../components/modals/ShareProcessoModal";
 import { toTitleCase as tc, confirmWorkspaceExit } from "../../lib/utils";
 import { getRoles, isSuperBossUser } from "../../lib/auth";
+import { firestoreService } from "../../lib/firestoreService";
 
 interface MainHeaderProps {
   user?: any;
@@ -108,6 +110,7 @@ const LogoutDoorIcon: React.FC<{ className?: string }> = ({ className = "h-[17px
 
 export default function MainHeader({
   user,
+  activeInst,
   colaboradores = [],
   onBack,
   onLogout,
@@ -122,7 +125,7 @@ export default function MainHeader({
   onOpenQuantumAI,
   onMinimize,
   onSync,
-}: MainHeaderProps) {
+}: MainHeaderProps & { activeInst?: any }) {
   const [now, setNow] = useState(new Date());
   const [showShareModal, setShowShareModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -156,6 +159,16 @@ export default function MainHeader({
   const [isOnline, setIsOnline] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  // Cores dinâmicas derivadas do logótipo da instituição
+  const primaryBg = activeInst?.primaryColor || "#050b38";
+  const secondaryBg = activeInst?.secondaryColor || "#070e2d";
+  const accentColor = activeInst?.accentColor || "#FFB800";
+  const instLogo = activeInst?.logo || "https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad";
+  
+  // Priorizar sigla, caso contrário mostrar o nome completo. Limitar tamanho para evitar quebra de layout.
+  const nameToDisplay = activeInst?.sigla || activeInst?.nome || "SIGEP";
+  const instName = nameToDisplay.length > 25 ? nameToDisplay.substring(0, 25) + "..." : nameToDisplay;
 
   const getDisplayName = (u: any) => {
     if (u?.name) {
@@ -283,16 +296,19 @@ export default function MainHeader({
         userName={user?.name}
       />
       <header
-        className="bg-[#050b38] w-full flex flex-col flex-none z-50 shadow-2xl relative border-b border-white/20"
-        style={{ fontFamily: '"Bookman Old Style", serif' }}
+        className="w-full flex flex-col flex-none z-50 shadow-2xl relative border-b border-white/20 transition-colors duration-500"
+        style={{ 
+          backgroundColor: primaryBg,
+          fontFamily: '"Bookman Old Style", serif' 
+        }}
       >
         <div className="w-full flex justify-between items-center px-2 sm:px-4 md:px-6 pt-1 pb-1 gap-2 md:gap-4">
           {/* Left - Logos */}
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
             <div className="flex border-2 border-white p-0.5 rounded-xl items-center justify-center bg-white overflow-hidden w-8 h-8 md:w-11 md:h-11 shrink-0 shadow-lg">
               <img
-                src="https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad"
-                alt="Logo SIGEP"
+                src={instLogo}
+                alt={`Logotipo ${instName}`}
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
               />
@@ -300,10 +316,10 @@ export default function MainHeader({
             <div className="flex flex-col">
               <div className="flex items-center gap-1">
                 <h1
-                  className="text-xs md:text-lg lg:text-xl font-black tracking-tight text-[#FFB800]"
-                  style={textShadowStyle}
+                  className="text-xs md:text-lg lg:text-xl font-black tracking-tight"
+                  style={{ ...textShadowStyle, color: accentColor }}
                 >
-                  SIGEP
+                  {instName}
                 </h1>
               </div>
               <h2
@@ -317,15 +333,17 @@ export default function MainHeader({
 
           {/* Center - Date & Time (Floating Box) */}
           <div 
-            className="hidden sm:flex flex-col items-center justify-center border-2 border-[#546282]/80 px-6 py-1.5 bg-[#070e2d] min-w-[210px] md:min-w-[240px] mx-auto rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.7)]"
+            className="hidden sm:flex flex-col items-center justify-center border-2 border-white/20 px-6 py-1.5 min-w-[210px] md:min-w-[240px] mx-auto rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.7)] transition-colors duration-500"
             style={{ 
+              backgroundColor: secondaryBg,
               fontFamily: '"Bookman Old Style", Georgia, serif'
             }}
           >
             <div className="flex flex-col items-center justify-center gap-0.5 w-full leading-tight text-center">
               <span
-                className="text-[#FFB800] text-xs md:text-sm font-black tracking-widest"
+                className="text-xs md:text-sm font-black tracking-widest"
                 style={{
+                  color: accentColor,
                   textShadow: "1.5px 1.5px 0px #000, 2px 2px 0px #000, 3px 3px 6px rgba(0,0,0,0.8)",
                 }}
               >
@@ -358,7 +376,10 @@ export default function MainHeader({
             {/* User Profile Area */}
             <div className="flex items-center gap-2">
               <div className="relative shrink-0">
-                <div className="w-8 h-8 md:w-11 md:h-11 bg-[#E1E8FA] rounded-2xl border-2 border-[#FFB800] flex items-center justify-center text-[#121c60] shadow-xl overflow-hidden">
+                <div 
+                  className="w-8 h-8 md:w-11 md:h-11 bg-[#E1E8FA] rounded-2xl border-2 flex items-center justify-center text-[#121c60] shadow-xl overflow-hidden"
+                  style={{ borderColor: accentColor }}
+                >
                   {(() => {
                     const colab = colaboradores.find(
                       (c) => c.nuit === user?.nuit || c.email === user?.email,
@@ -382,7 +403,10 @@ export default function MainHeader({
                     );
                   })()}
                 </div>
-                <div className="absolute -bottom-1 -right-0.5 w-4 h-4 bg-[#00FF00] rounded-full border-2 border-[#050b38]"></div>
+                <div 
+                  className="absolute -bottom-1 -right-0.5 w-4 h-4 bg-[#00FF00] rounded-full border-2"
+                  style={{ borderColor: primaryBg }}
+                ></div>
               </div>
 
               <div className="hidden sm:flex flex-col gap-1 min-w-0">
@@ -392,7 +416,10 @@ export default function MainHeader({
                 >
                   {tc(getDisplayName(user))}
                 </span>
-                <div className="bg-[#FFB800] text-black text-[5px] md:text-[6px] font-black px-3 py-0.5 rounded shadow-md tracking-wider truncate">
+                <div 
+                  className="text-black text-[5px] md:text-[6px] font-black px-3 py-0.5 rounded shadow-md tracking-wider truncate"
+                  style={{ backgroundColor: accentColor }}
+                >
                   {isSuperBossUser(user)
                     ? "Proprietário e Programador"
                     : tc(
@@ -489,7 +516,8 @@ export default function MainHeader({
                     e.stopPropagation();
                     onBack();
                   }}
-                  className="bg-transparent hover:bg-[#FFB800]/10 border-2 border-[#FFB800] text-[#FFB800] active:scale-95 px-3.5 py-1 rounded-full flex items-center gap-2 font-black shadow-lg transition-all cursor-pointer relative z-10 select-none"
+                  className="bg-transparent active:scale-95 px-3.5 py-1 rounded-full flex items-center gap-2 font-black shadow-lg transition-all cursor-pointer relative z-10 select-none border-2"
+                  style={{ borderColor: accentColor, color: accentColor }}
                   title="Voltar"
                 >
                   <ArrowLeft size={16} strokeWidth={3} />
@@ -500,8 +528,8 @@ export default function MainHeader({
               )}
 
               <h2
-                className="text-[#FFB800] text-[9px] md:text-[12px] lg:text-base font-black tracking-widest leading-none"
-                style={textShadowStyle}
+                className="text-[9px] md:text-[12px] lg:text-base font-black tracking-widest leading-none"
+                style={{ ...textShadowStyle, color: accentColor }}
               >
                 {tc(title || "Menu Principal")}
               </h2>

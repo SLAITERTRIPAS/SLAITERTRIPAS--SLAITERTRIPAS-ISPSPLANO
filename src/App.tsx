@@ -95,6 +95,7 @@ export default function App() {
   const [view, setView] = useState<
     | "home"
     | "login"
+    | "sobre"
     | "registration_form"
     | "menu"
     | "submenu"
@@ -188,9 +189,53 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [activeInst, setActiveInst] = useState<any>(null); // Adicionado
 
   const [user, setUser] = useState<any>(null);
+  // ... existing code ...
+  
+  // Instituição Dinâmica (Movido de MainHeader para App)
+  useEffect(() => {
+    const instId = user?.instituicaoId || "isps";
+    let unsub = () => {};
+    
+    try {
+      unsub = firestoreService.instituicoes.subscribe((instituicoes: any[]) => {
+        if (instituicoes && instituicoes.length > 0) {
+          const found = instituicoes.find((i) => i.id === instId) || instituicoes[0];
+          if (found) {
+            setActiveInst(found);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("Aviso ao carregar dados da instituição no App:", e);
+    }
+
+    const handleInstUpdated = (e: any) => {
+      if (e.detail?.payload) {
+        setActiveInst((prev: any) => ({ ...(prev || {}), ...e.detail.payload }));
+      }
+    };
+    window.addEventListener("instituicao_updated", handleInstUpdated);
+
+    return () => {
+      unsub();
+      window.removeEventListener("instituicao_updated", handleInstUpdated);
+    };
+  }, [user?.instituicaoId]);
+
+  // Aplicar cores como variáveis CSS (adicionar este efeito)
+  useEffect(() => {
+    if (activeInst) {
+      document.documentElement.style.setProperty('--color-primary', activeInst.primaryColor || "#050b38");
+      document.documentElement.style.setProperty('--color-secondary', activeInst.secondaryColor || "#070e2d");
+      document.documentElement.style.setProperty('--color-accent', activeInst.accentColor || "#FFB800");
+    }
+  }, [activeInst]);
+
   const [headerActions, setHeaderActions] = useState<ReactNode>(null);
+
   const [innerPath, setInnerPath] = useState<string[]>([]);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [urlParams, setUrlParams] = useState<{
@@ -1897,6 +1942,7 @@ export default function App() {
               <MainHeader
                 unreadMessagesCount={unreadMessagesCount}
                 user={extendedUser}
+                activeInst={activeInst}
                 colaboradores={colaboradores}
                 onBack={goBack}
                 showBack={historyStack.length > 0 || ((view as string) !== "menu" && (view as string) !== "login" && (view as string) !== "home")}

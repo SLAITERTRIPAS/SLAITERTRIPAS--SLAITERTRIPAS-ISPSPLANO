@@ -3193,7 +3193,7 @@ export default function PlanoWorkflowView({
 
     setIsProcessing(true);
     onShowAlert(
-      "A organizar a ordem numérica das actividades por setor (a começar de 001 para a frente)...",
+      "A organizar as actividades por mês de realização (Janeiro a Dezembro) e reordenar a numeração sequencial a começar de 001...",
     );
 
     try {
@@ -4260,9 +4260,9 @@ export default function PlanoWorkflowView({
                       onClick={handleFixNumbering}
                       disabled={isProcessing || filteredActivities.length === 0}
                       className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 border border-indigo-200"
-                      title="Organizar a numeração das actividades do setor a partir de 001"
+                      title="Organizar a numeração das actividades do setor por Mês de Realização (Janeiro a Dezembro) e ordem sequencial 001..."
                     >
-                      <RotateCcw size={14} /> Organizar Ordem Numérica (001...)
+                      <RotateCcw size={14} /> Organizar por Mês & Ordem (001...)
                     </button>
                     {!isReadOnly && (
                       <button

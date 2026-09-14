@@ -16,6 +16,10 @@ import { normalize as n, isMatch, toTitleCase as tc } from "../../lib/utils";
 import { isBossUser, isSuperBossUser, getRoles } from "../../lib/auth";
 import { firestoreService } from "../../lib/firestoreService";
 import { baseMenuItems } from "../../constants/menuHierarchy";
+import {
+  buildMenuItemsForInstituicao,
+  getActiveInstituicaoId,
+} from "../../lib/instituicaoEstruturaService";
 
 export default function MainMenu({
   user,
@@ -83,6 +87,34 @@ export default function MainMenu({
 
   const isAdmin = isSuperBossUser(user);
 
+  const [activeInstId, setActiveInstId] = useState<string>(() => {
+    return user?.instituicaoId || getActiveInstituicaoId();
+  });
+  const [estruturaVersion, setEstruturaVersion] = useState(0);
+
+  useEffect(() => {
+    const handleInstChange = (e: any) => {
+      if (e.detail?.instituicaoId) {
+        setActiveInstId(e.detail.instituicaoId);
+      } else {
+        setActiveInstId(getActiveInstituicaoId());
+      }
+      setEstruturaVersion((v) => v + 1);
+    };
+
+    const handleEstruturaUpdate = () => {
+      setEstruturaVersion((v) => v + 1);
+    };
+
+    window.addEventListener("instituicao_changed", handleInstChange);
+    window.addEventListener("sigep_estrutura_updated", handleEstruturaUpdate);
+
+    return () => {
+      window.removeEventListener("instituicao_changed", handleInstChange);
+      window.removeEventListener("sigep_estrutura_updated", handleEstruturaUpdate);
+    };
+  }, []);
+
   const menuItems = useMemo(() => {
     const setAllAccessible = (node: any): any => ({
       ...node,
@@ -92,8 +124,9 @@ export default function MainMenu({
       subItems: node.subItems?.map(setAllAccessible),
     });
 
-    return baseMenuItems.map(setAllAccessible);
-  }, []);
+    const dynamicBlocks = buildMenuItemsForInstituicao(user?.instituicaoId || activeInstId);
+    return dynamicBlocks.map(setAllAccessible);
+  }, [user?.instituicaoId, activeInstId, estruturaVersion]);
 
   return (
     <div className="flex-1 min-h-0 w-full bg-white flex flex-col overflow-y-auto p-0">
@@ -131,64 +164,35 @@ export default function MainMenu({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-[90%] mx-auto py-2 sm:py-6">
-          {[
-            {
-              title: "Órgão de Direção e Gestão",
-              icon: LayoutGrid,
-              color: "bg-[#1e3a8a]",
-              items: menuItems[0]?.items,
-              accessible: menuItems[0]?.accessible,
-              visible: menuItems[0]?.visible,
-            },
-            {
-              title: "Unidade orgânica",
-              icon: Building2,
-              color: "bg-[#991b1b]",
-              items: menuItems[1]?.items,
-              accessible: menuItems[1]?.accessible,
-              visible: menuItems[1]?.visible,
-            },
-            {
-              title: "Serviços Centrais",
-              icon: Briefcase,
-              color: "bg-[#4b5563]",
-              items: menuItems[2]?.items,
-              accessible: menuItems[2]?.accessible,
-              visible: menuItems[2]?.visible,
-            },
-            {
-              title: "Sistema",
-              icon: Settings,
-              color: "bg-black",
-              items: menuItems[3]?.items,
-              accessible: menuItems[3]?.accessible,
-              visible: menuItems[3]?.visible,
-            },
-          ]
-            .filter((item) => item && item.visible)
-            .map((item: any, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  onNavigate(item.title, item.items || []);
-                }}
-                className={`${item.color} w-full text-white p-3 sm:p-4 rounded-xl sm:rounded-[1.5rem] flex sm:flex-col items-center justify-between sm:justify-center gap-2 sm:gap-4 min-h-[3.2rem] sm:min-h-[8.4rem] lg:min-h-[12.6rem] shadow-lg hover:shadow-xl active:scale-[0.98] touch-manipulation transition-all duration-200 cursor-pointer text-left sm:text-center group`}
-              >
-                <div className="p-1.5 sm:p-3 bg-white/10 rounded-lg sm:rounded-xl group-hover:bg-white/20 transition-colors shrink-0">
-                  <item.icon
-                    className="w-5 h-5 sm:w-10 sm:h-10 lg:w-12 lg:h-12"
-                    strokeWidth={1.5}
+          {menuItems
+            .filter((item: any) => item && (item.visible !== false))
+            .map((item: any, index: number) => {
+              const IconComp = item.icon || LayoutGrid;
+              const bgColor = item.color || "bg-blue-900";
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    onNavigate(item.title, item.items || []);
+                  }}
+                  className={`${bgColor} w-full text-white p-3 sm:p-4 rounded-xl sm:rounded-[1.5rem] flex sm:flex-col items-center justify-between sm:justify-center gap-2 sm:gap-4 min-h-[3.2rem] sm:min-h-[8.4rem] lg:min-h-[12.6rem] shadow-lg hover:shadow-xl active:scale-[0.98] touch-manipulation transition-all duration-200 cursor-pointer text-left sm:text-center group`}
+                >
+                  <div className="p-1.5 sm:p-3 bg-white/10 rounded-lg sm:rounded-xl group-hover:bg-white/20 transition-colors shrink-0">
+                    <IconComp
+                      className="w-5 h-5 sm:w-10 sm:h-10 lg:w-12 lg:h-12"
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                  <span className="text-sm sm:text-base lg:text-lg font-black font-serif tracking-tight leading-tight flex-1 text-center">
+                    {item.title}
+                  </span>
+                  <ChevronRight
+                    size={16}
+                    className="sm:hidden text-white/70 shrink-0"
                   />
-                </div>
-                <span className="text-sm sm:text-base lg:text-lg font-black font-serif tracking-tight leading-tight flex-1 text-center">
-                  {item.title}
-                </span>
-                <ChevronRight
-                  size={16}
-                  className="sm:hidden text-white/70 shrink-0"
-                />
-              </button>
-            ))}
+                </button>
+              );
+            })}
         </div>
       </main>
     </div>

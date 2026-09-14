@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { firestoreService } from "../../lib/firestoreService";
+import { useInstituicaoEstrutura } from "../../lib/instituicaoEstruturaService";
 import { DraftModal, SyncIndicator } from "../../components/ui/DraftMemoryUI";
 import {
   PROVINCIAS_DISTRITOS,
@@ -207,6 +208,9 @@ export default function RegistarFuncionarioForm({
   const [instituicaoId, setInstituicaoId] = useState<string>(initialData?.instituicaoId || "");
   const [instituicaoNome, setInstituicaoNome] = useState<string>(initialData?.instituicaoNome || "");
   const [instituicaoLogo, setInstituicaoLogo] = useState<string>(initialData?.instituicaoLogo || "");
+
+  // Estrutura organizacional canónica da Gestão das Instituições (Órgão -> Direção -> Departamento -> Repartição)
+  const { orgaosNomes, getDirecoes, getDepartamentos, getReparticoes } = useInstituicaoEstrutura(instituicaoId);
 
   useEffect(() => {
     const unsub = firestoreService.instituicoes.subscribe((data) => {
@@ -1184,7 +1188,7 @@ export default function RegistarFuncionarioForm({
                   setSector("");
                 }}
                 placeholder="Selecione..."
-                options={UNIDADES_ORGANICAS_SISTEMA.map((u) => u.nome)}
+                options={orgaosNomes.length > 0 ? orgaosNomes : UNIDADES_ORGANICAS_SISTEMA.map((u) => u.nome)}
                 required
               />
 
@@ -1198,11 +1202,7 @@ export default function RegistarFuncionarioForm({
                   setSector("");
                 }}
                 placeholder="Selecione..."
-                options={
-                  unidade
-                    ? UNIDADES_ORGANICAS_SISTEMA.find((u) => u.nome === unidade)?.direcoes || []
-                    : []
-                }
+                options={unidade ? getDirecoes(unidade) : []}
                 disabled={!unidade}
               />
 
@@ -1215,7 +1215,7 @@ export default function RegistarFuncionarioForm({
                   setSector("");
                 }}
                 placeholder="Selecione..."
-                options={direcao ? DEPARTAMENTOS[direcao] || [] : []}
+                options={direcao ? getDepartamentos(direcao) : []}
                 disabled={!direcao}
               />
 
@@ -1227,7 +1227,7 @@ export default function RegistarFuncionarioForm({
                   setSector("");
                 }}
                 placeholder="Selecione..."
-                options={departamento ? REPARTICOES[departamento] || [] : []}
+                options={departamento ? getReparticoes(departamento) : []}
                 disabled={!departamento}
               />
 
