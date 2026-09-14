@@ -19,22 +19,7 @@ export default function MyMatrixView({
   externalMatrices?: any[];
 }) {
   // Use external matrices if provided, otherwise use mock data
-  const publishedMatrices = externalMatrices || [
-    {
-      id: "MAT-2027-001",
-      year: 2027,
-      publishedAt: "2026-04-02 11:15",
-      activityCount: 8,
-      status: "published",
-    },
-    {
-      id: "MAT-2026-005",
-      year: 2026,
-      publishedAt: "2025-03-15 09:30",
-      activityCount: 12,
-      status: "shared",
-    },
-  ];
+  const publishedMatrices = externalMatrices || [];
 
   const handleDownloadMatrix = (matrix: PublishedMatrix) => {
     let content = `Instituto Superior Politécnico de Songo\n\n`;
@@ -47,7 +32,7 @@ export default function MyMatrixView({
     content += `Quantidade de Atividades: ${matrix.activityCount}\n`;
     content += `Estado: ${matrix.status === "shared" ? "Partilhada com Direções" : "Consolidada e Aguardando Partilha"}\n\n`;
     content += `--------------------------------------------------\n`;
-    content += `Este documento oficial foi gerado e assinado digitalmente pelo Sistema Integrado de Gestão do Songo.\n`;
+    content += `Este documento oficial foi gerado e assinado digitalmente pelo Sistema Integrado de Gestão de Processo (SIGEP).\n`;
     content += `Data de Emissão: ${new Date().toLocaleString("pt-PT")}\n`;
 
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });

@@ -803,9 +803,9 @@ export default function AfetacaoView({
                   </p>
 
                   <div className="mt-8 flex flex-wrap justify-center gap-2">
-                    {dep.sectors.slice(0, 3).map((s) => (
+                    {dep.sectors.slice(0, 3).map((s, idx) => (
                       <span
-                        key={s + "-" + Math.random()}
+                        key={`${s}-${idx}`}
                         className="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-blue-400 border border-blue-100 italic"
                       >
                         {s}
@@ -861,9 +861,9 @@ export default function AfetacaoView({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {getVisibleSectors(viewState.department).map((sector) => (
+                  {getVisibleSectors(viewState.department).map((sector, idx) => (
                     <button
-                      key={sector}
+                      key={`${sector}-${idx}`}
                       onClick={() =>
                         setViewState({ ...viewState, level: "sector", sector })
                       }

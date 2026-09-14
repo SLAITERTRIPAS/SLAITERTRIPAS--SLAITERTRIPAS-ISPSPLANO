@@ -8,7 +8,11 @@ import {
   ShieldCheck,
   X,
   FileCheck,
+  Wand2,
+  Sliders,
+  Sparkles,
 } from "lucide-react";
+import { removeSignatureBackground } from "../lib/imageProcessingUtils";
 
 interface AssinaturaDigitalPadProps {
   onSaveAssinatura: (data: {
@@ -33,8 +37,14 @@ export default function AssinaturaDigitalPad({
   const [tab, setTab] = useState<"upload" | "desenhar" | "eletronica">("desenhar");
   const [nomeSignatario, setNomeSignatario] = useState(defaultNome);
   const [cargoSignatario, setCargoSignatario] = useState(defaultCargo);
+  const [imagemOriginal, setImagemOriginal] = useState<string | null>(null);
   const [imagemAssinatura, setImagemAssinatura] = useState<string | null>(null);
   const [penColor, setPenColor] = useState<string>("#0f172a"); // Azul escuro / Preto executivo
+
+  // Parâmetros de Remoção de Fundo
+  const [bgThreshold, setBgThreshold] = useState<number>(195);
+  const [inkColorMode, setInkColorMode] = useState<"original" | "black" | "blue">("original");
+  const [isProcessingBg, setIsProcessingBg] = useState(false);
 
   // Canvas para desenhar assinatura
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -53,6 +63,24 @@ export default function AssinaturaDigitalPad({
       }
     }
   }, [tab, penColor]);
+
+  // Processar remoção de fundo na imagem carregada
+  const processBgRemoval = async (rawUrl: string, thresholdVal: number, inkMode: "original" | "black" | "blue") => {
+    setIsProcessingBg(true);
+    try {
+      const cleaned = await removeSignatureBackground(rawUrl, {
+        threshold: thresholdVal,
+        boostInk: true,
+        inkColor: inkMode,
+      });
+      setImagemAssinatura(cleaned);
+    } catch (err) {
+      console.warn("Falha no reprocessamento do fundo:", err);
+      setImagemAssinatura(rawUrl);
+    } finally {
+      setIsProcessingBg(false);
+    }
+  };
 
   // Funções de desenho no Canvas
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -110,9 +138,11 @@ export default function AssinaturaDigitalPad({
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result === "string") {
-        setImagemAssinatura(reader.result);
+        const raw = reader.result;
+        setImagemOriginal(raw);
+        await processBgRemoval(raw, bgThreshold, inkColorMode);
       }
     };
     reader.readAsDataURL(file);
@@ -349,31 +379,94 @@ export default function AssinaturaDigitalPad({
               htmlFor="assinatura-file"
               className="cursor-pointer flex flex-col items-center justify-center gap-2"
             >
-              <ImageIcon className="text-amber-400" size={28} />
-              <div className="text-xs font-bold text-white">
-                Clique para carregar a imagem da sua assinatura
+              <div className="p-2.5 rounded-full bg-blue-900/40 text-blue-400 border border-blue-700/50">
+                <Wand2 size={24} className="animate-pulse text-amber-400" />
               </div>
-              <span className="text-[10px] text-slate-400">
-                Suporta ficheiros PNG com fundo transparente, JPG ou SVG
+              <div className="text-xs font-bold text-white">
+                Clique para carregar a foto ou digitalização da assinatura
+              </div>
+              <span className="text-[10px] text-slate-400 max-w-xs">
+                O motor Canvas irá <span className="text-emerald-400 font-bold">remover o fundo branco do papel</span> de forma automática e isolar apenas os traços da tinta.
               </span>
             </label>
           </div>
 
           {imagemAssinatura && (
-            <div className="bg-white rounded-xl p-3 flex items-center justify-center border border-slate-300 relative">
-              <img
-                src={imagemAssinatura}
-                alt="Prévia Assinatura"
-                className="max-h-24 object-contain"
-              />
-              <button
-                type="button"
-                onClick={() => setImagemAssinatura(null)}
-                className="absolute top-2 right-2 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full"
-                title="Remover imagem"
-              >
-                <X size={12} />
-              </button>
+            <div className="flex flex-col gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold border-b border-slate-800 pb-2">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-amber-400" />
+                  <span>Fundo Removido com Sucesso (Canva AI)</span>
+                </span>
+                {isProcessingBg && (
+                  <span className="text-amber-400 animate-pulse">A reprocessar...</span>
+                )}
+              </div>
+
+              {/* Controlo de Tolerância de Fundo & Cor da Tinta */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1 flex items-center justify-between">
+                    <span>Sensibilidade do Fundo:</span>
+                    <span className="text-white font-mono">{bgThreshold}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="140"
+                    max="240"
+                    value={bgThreshold}
+                    onChange={async (e) => {
+                      const val = Number(e.target.value);
+                      setBgThreshold(val);
+                      if (imagemOriginal) {
+                        await processBgRemoval(imagemOriginal, val, inkColorMode);
+                      }
+                    }}
+                    className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    Tratamento da Tinta:
+                  </label>
+                  <select
+                    value={inkColorMode}
+                    onChange={async (e) => {
+                      const mode = e.target.value as "original" | "black" | "blue";
+                      setInkColorMode(mode);
+                      if (imagemOriginal) {
+                        await processBgRemoval(imagemOriginal, bgThreshold, mode);
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-white text-[10px] focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="original">Preservar Tinta Original</option>
+                    <option value="black">Escurecer p/ Preto Executivo</option>
+                    <option value="blue">Realçar p/ Azul Caneta</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Prévia com fundo axadrezado transparente */}
+              <div className="relative bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:12px_12px] bg-slate-900 rounded-xl p-4 flex items-center justify-center border border-slate-700 min-h-[110px]">
+                <img
+                  src={imagemAssinatura}
+                  alt="Assinatura sem Fundo"
+                  className="max-h-24 object-contain filter drop-shadow-md"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImagemAssinatura(null);
+                    setImagemOriginal(null);
+                  }}
+                  className="absolute top-2 right-2 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full transition-all"
+                  title="Remover assinatura"
+                >
+                  <X size={12} />
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@ export const ABBREVIATIONS = [
   { sigla: "Songo", significado: "Instituto Superior Politécnico de Songo" },
   {
     sigla: "SIGEP",
-    significado: "Sistema Integrado de Gestão de Planificação",
+    significado: "Sistema Integrado de Gestão de Processo",
   },
   { sigla: "SIGPro", significado: "Sistema de Gestão Académica do Songo" },
   { sigla: "HCB", significado: "Hidroeléctrica de Cahora Bassa" },

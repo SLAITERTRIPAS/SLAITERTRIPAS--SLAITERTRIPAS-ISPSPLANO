@@ -11,7 +11,8 @@ import {
   MapPin,
   BookOpen,
   Calendar,
-  X
+  X,
+  ShieldCheck
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -25,6 +26,14 @@ interface RegistrationOption {
 }
 
 const REGISTRATION_OPTIONS: RegistrationOption[] = [
+  {
+    id: "admin_instituicao",
+    title: "Administrador da Instituição",
+    description: "Registar o administrador responsável pela gestão do organograma da instituição.",
+    icon: ShieldCheck,
+    color: "bg-red-600",
+    formType: "admin_instituicao"
+  },
   {
     id: "user",
     title: "Utilizador / Colaborador",

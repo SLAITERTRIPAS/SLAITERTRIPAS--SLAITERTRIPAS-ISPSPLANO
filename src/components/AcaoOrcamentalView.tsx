@@ -696,7 +696,7 @@ export default function AcaoOrcamentalView({
       direcao: Array.from(direcoes).sort(),
       departamento: Array.from(departamentos).sort(),
       reparticao: Array.from(reparticoes).sort(),
-      setor: Array.from(setores).sort(),
+      setor: Array.from(setores).filter(s => s.toLowerCase() !== "único" && s.toLowerCase() !== "unico").sort(),
     };
   }, [activities, title, user?.departamento, user?.direcao, user?.reparticao, user?.setor, isPlanificacaoOrDPEP]);
 
@@ -2254,10 +2254,10 @@ export default function AcaoOrcamentalView({
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
                   >
                     {selectedLevel === "institucional" && <option value="todos">Todos (Geral)</option>}
-                    {selectedLevel === "direcao" && levelUnits.direcao.map(u => <option key={u} value={u}>{u}</option>)}
-                    {selectedLevel === "departamento" && levelUnits.departamento.map(u => <option key={u} value={u}>{u}</option>)}
-                    {selectedLevel === "reparticao" && levelUnits.reparticao.map(u => <option key={u} value={u}>{u}</option>)}
-                    {selectedLevel === "setor" && levelUnits.setor.map(u => <option key={u} value={u}>{u}</option>)}
+                    {selectedLevel === "direcao" && levelUnits.direcao.map((u, idx) => <option key={`${u}-${idx}`} value={u}>{u}</option>)}
+                    {selectedLevel === "departamento" && levelUnits.departamento.map((u, idx) => <option key={`${u}-${idx}`} value={u}>{u}</option>)}
+                    {selectedLevel === "reparticao" && levelUnits.reparticao.map((u, idx) => <option key={`${u}-${idx}`} value={u}>{u}</option>)}
+                    {selectedLevel === "setor" && levelUnits.setor.map((u, idx) => <option key={`${u}-${idx}`} value={u}>{u}</option>)}
                   </select>
                 </div>
               </div>

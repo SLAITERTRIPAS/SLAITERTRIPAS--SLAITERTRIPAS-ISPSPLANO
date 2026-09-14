@@ -37,8 +37,8 @@ export default function ShareProcessoModal({
   const getInvitationText = () => {
     const genLink = getGeneratedLink();
     return selectedProcessoId
-      ? `*SIGEP - Sistema Integrado de Gestão do Pessoal*\n\nSaudações institucionais do Songo.\n\nConvidamos a aceder ao Processo Individual *${selectedProcessoId}*.\n\nLink de acesso:\n${genLink}\n\n_Autenticado digitalmente pelo Songo._`
-      : `*SIGEP - Sistema Integrado de Gestão do Pessoal*\n\nSaudações institucionais do Songo.\n\nConvidamos a aceder ao canal de partilha para o cargo de *${selectedRole}* (${selectedDept}).\n\nLink de acesso permanente:\n${genLink}\n\n_Autenticado digitalmente pelo Songo._`;
+      ? `*SIGEP - Sistema Integrado de Gestão de Processo*\n\nSaudações institucionais do Songo.\n\nConvidamos a aceder ao Processo Individual *${selectedProcessoId}*.\n\nLink de acesso:\n${genLink}\n\n_Autenticado digitalmente pelo Songo._`
+      : `*SIGEP - Sistema Integrado de Gestão de Processo*\n\nSaudações institucionais do Songo.\n\nConvidamos a aceder ao canal de partilha para o cargo de *${selectedRole}* (${selectedDept}).\n\nLink de acesso permanente:\n${genLink}\n\n_Autenticado digitalmente pelo Songo._`;
   };
 
   return (

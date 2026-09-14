@@ -13,9 +13,25 @@ service cloud.firestore {
       );
     }
 
-    // Regra geral para todas as coleções do sistema
-    match /{document=**} {
-      allow read, write: if true;
+    function getLoggedUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isGlobalAdmin() {
+      return isMaster() || (isSignedIn() && getLoggedUser().isOwner == true);
+    }
+
+    // Regra para coleções que devem ser isoladas
+    match /{collection}/{docId} {
+      allow read, write: if isGlobalAdmin() || (isSignedIn() && (
+        resource.data.tenantId == getLoggedUser().instituicaoId || 
+        request.resource.data.tenantId == getLoggedUser().instituicaoId
+      ));
+    }
+    
+    // Regra para coleções públicas ou de usuários
+    match /users/{userId} {
+      allow read, write: if isGlobalAdmin() || isSignedIn() && request.auth.uid == userId;
     }
   }
 }

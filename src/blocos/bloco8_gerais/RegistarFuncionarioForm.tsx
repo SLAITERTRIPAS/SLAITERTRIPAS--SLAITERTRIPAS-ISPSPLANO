@@ -41,6 +41,54 @@ import {
 import { getRoles } from "../../lib/auth";
 import { printElementById } from "../../lib/printUtils";
 
+
+const InputGroup = ({ label, value, onChange, placeholder, type = "text", required, className, disabled, maxLength }: any) => (
+  <div className={`flex flex-col gap-1 w-full ${className || ""}`}>
+    {label && (
+      <label className={`text-[11px] font-black tracking-tight mb-0.5 ${required ? "text-red-600" : "text-slate-800"}`}>
+        {label}
+      </label>
+    )}
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      maxLength={maxLength}
+      className={`bg-white border border-slate-200 rounded-[14px] px-4 py-3 text-slate-800 text-sm focus:border-blue-500 focus:outline-none transition-all w-full font-bold placeholder:font-normal placeholder:text-slate-300 disabled:opacity-50`}
+    />
+  </div>
+);
+
+const SelectGroup = ({ label, value, onChange, options, placeholder, required, className, textClassName, borderClassName }: any) => (
+  <div className={`flex flex-col gap-1 w-full ${className || ""}`}>
+    {label && (
+      <label className={`text-[11px] font-black tracking-tight mb-0.5 ${required ? "text-red-600" : "text-slate-800"}`}>
+        {label}
+      </label>
+    )}
+    <div className="relative w-full">
+      <select
+        value={value}
+        onChange={onChange}
+        className={`appearance-none bg-white border ${borderClassName || "border-slate-200"} rounded-[14px] px-4 py-3 text-slate-800 text-sm focus:border-blue-500 focus:outline-none transition-all w-full pr-10 font-black ${textClassName || ""}`}
+      >
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map((opt: any, idx: number) => {
+          const val = typeof opt === "string" ? opt : opt.value;
+          const lbl = typeof opt === "string" ? opt : opt.label;
+          return (
+            <option key={`${val}-${idx}`} value={val} className="text-slate-800">
+              {lbl}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  </div>
+);
+
 export default function RegistarFuncionarioForm({
   onCancel,
   onSubmit,
@@ -69,6 +117,15 @@ export default function RegistarFuncionarioForm({
   const [nuit, setNuit] = useState<string>(initialData?.nuit || "");
   const [email, setEmail] = useState<string>(initialData?.email || "");
   const [telefone, setTelefone] = useState<string>(initialData?.telefone || "");
+  
+  // Gerar ID automaticamente baseado em Nome e NUIT
+  useEffect(() => {
+    if (!initialData) {
+      const generatedId = generateCollaboratorId(nome, nuit);
+      setNumeroProcesso(generatedId);
+    }
+  }, [nome, nuit, initialData]);
+
   const [estadoCivil, setEstadoCivil] = useState<string>(initialData?.estadoCivil || "");
   const [nomePai, setNomePai] = useState<string>(initialData?.nomePai || "");
   const [nomeMae, setNomeMae] = useState<string>(initialData?.nomeMae || "");
@@ -145,6 +202,25 @@ export default function RegistarFuncionarioForm({
   );
   const [estado, setEstado] = useState<string>(initialData?.estado || "Ativo");
 
+  // Multi-tenant: Lista de instituições registadas
+  const [instituicoes, setInstituicoes] = useState<any[]>([]);
+  const [instituicaoId, setInstituicaoId] = useState<string>(initialData?.instituicaoId || "");
+  const [instituicaoNome, setInstituicaoNome] = useState<string>(initialData?.instituicaoNome || "");
+  const [instituicaoLogo, setInstituicaoLogo] = useState<string>(initialData?.instituicaoLogo || "");
+
+  useEffect(() => {
+    const unsub = firestoreService.instituicoes.subscribe((data) => {
+      setInstituicoes(data || []);
+      // Auto-selecionar se houver apenas uma instituição
+      if (data && data.length === 1 && !instituicaoId) {
+        setInstituicaoId(data[0].id);
+        setInstituicaoNome(data[0].nome);
+        setInstituicaoLogo(data[0].logo || "");
+      }
+    });
+    return () => unsub();
+  }, [instituicaoId]);
+
   // Search logic for pre-populating existing staff (highly productive features must be preserved)
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -191,7 +267,6 @@ export default function RegistarFuncionarioForm({
 
   useEffect(() => {
     if (isDraftLoaded && !initialData && currentUser?.id) {
-      setIsSyncing(true);
       const draftData = {
         foto,
         numeroProcesso,
@@ -240,6 +315,7 @@ export default function RegistarFuncionarioForm({
         lastSync: new Date().toISOString(),
       };
       const timer = setTimeout(() => {
+        setIsSyncing(true);
         firestoreService.drafts
           .save(currentUser.id, FORM_ID, draftData)
           .finally(() => setIsSyncing(false));
@@ -426,14 +502,7 @@ export default function RegistarFuncionarioForm({
     }
   };
 
-  useEffect(() => {
-    if (nome || nuit) {
-      const generatedId = generateCollaboratorId(nome, nuit);
-      if (generatedId && !numeroProcesso) {
-        setNumeroProcesso(generatedId);
-      }
-    }
-  }, [nome, nuit]);
+
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -517,14 +586,19 @@ export default function RegistarFuncionarioForm({
         departamento,
         reparticao,
         sector,
+        instituicaoId,
+        instituicaoNome,
+        instituicaoLogo,
         cargo: toSentenceCase(cargo || carreira),
         dataNomeacao,
         dataDesnomeacao,
         estadoMandato,
         estado,
-        status: estado,
+        status: (direcao || departamento || reparticao || sector) ? "Afetado" : estado,
         tipo: carreira,
         areaDeAfetacao: (() => {
+          if (sector && sector !== "Nenhum" && sector !== "-")
+            return toTitleCase(sector);
           if (reparticao && reparticao !== "Nenhum" && reparticao !== "-")
             return toTitleCase(reparticao);
           if (departamento && departamento !== "Nenhum" && departamento !== "-")
@@ -564,58 +638,7 @@ export default function RegistarFuncionarioForm({
     "Proprietário do sistema",
   ];
 
-  // Helper inputs and selects to keep UI modular, highly polished, matching images
-  const InputGroup = ({ label, value, onChange, placeholder, type = "text", required, className, disabled, maxLength }: any) => (
-    <div className={`flex flex-col gap-1 w-full ${className || ""}`}>
-      {label && (
-        <label className={`text-[11px] font-black tracking-tight mb-0.5 ${required ? "text-red-600" : "text-slate-800"}`}>
-          {label}
-        </label>
-      )}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        maxLength={maxLength}
-        className={`bg-white border border-slate-200 rounded-[14px] px-4 py-3 text-slate-800 text-sm focus:border-blue-500 focus:outline-none transition-all w-full font-bold placeholder:font-normal placeholder:text-slate-300 disabled:opacity-50`}
-      />
-    </div>
-  );
 
-  const SelectGroup = ({ label, value, onChange, options, placeholder, required, className, textClassName, borderClassName }: any) => (
-    <div className={`flex flex-col gap-1 w-full ${className || ""}`}>
-      {label && (
-        <label className={`text-[11px] font-black tracking-tight mb-0.5 ${required ? "text-red-600" : "text-slate-800"}`}>
-          {label}
-        </label>
-      )}
-      <div className="relative w-full">
-        <select
-          value={value}
-          onChange={onChange}
-          className={`appearance-none bg-white border ${borderClassName || "border-slate-200"} rounded-[14px] px-4 py-3 text-slate-800 text-sm focus:border-blue-500 focus:outline-none transition-all w-full pr-10 font-black ${textClassName || ""}`}
-        >
-          {placeholder && <option value="">{placeholder}</option>}
-          {options.map((opt: any) => {
-            const val = typeof opt === "string" ? opt : opt.value;
-            const lbl = typeof opt === "string" ? opt : opt.label;
-            return (
-              <option key={val} value={val} className="text-slate-800">
-                {lbl}
-              </option>
-            );
-          })}
-        </select>
-        <div className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${textClassName || "text-slate-900"}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="relative min-h-screen bg-slate-50/50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
@@ -1126,6 +1149,30 @@ export default function RegistarFuncionarioForm({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {instituicoes.length > 0 && (
+                <div className="md:col-span-3 pb-2 border-b border-gray-100">
+                  <SelectGroup
+                    label="Instituição de Afiliação"
+                    value={instituicaoId}
+                    onChange={(e: any) => {
+                      const selectedId = e.target.value;
+                      setInstituicaoId(selectedId);
+                      const inst = instituicoes.find((i) => i.id === selectedId);
+                      if (inst) {
+                        setInstituicaoNome(inst.nome);
+                        setInstituicaoLogo(inst.logo || "");
+                      } else {
+                        setInstituicaoNome("");
+                        setInstituicaoLogo("");
+                      }
+                    }}
+                    placeholder="Selecione a Instituição..."
+                    options={instituicoes.map((i) => ({ label: i.nome, value: i.id }))}
+                    required
+                  />
+                </div>
+              )}
+
               <SelectGroup
                 label="Órgão"
                 value={unidade}
@@ -1173,7 +1220,7 @@ export default function RegistarFuncionarioForm({
               />
 
               <SelectGroup
-                label="Repartição / Secção"
+                label="Repartição"
                 value={reparticao}
                 onChange={(e: any) => {
                   setReparticao(e.target.value);
@@ -1185,12 +1232,23 @@ export default function RegistarFuncionarioForm({
               />
 
               <SelectGroup
-                label="Secção"
+                label="Setor"
                 value={sector}
                 onChange={(e: any) => setSector(e.target.value)}
                 placeholder="Selecione..."
-                options={reparticao ? SETORES[reparticao] || [] : []}
-                disabled={!reparticao}
+                options={
+                  reparticao
+                    ? (SETORES[reparticao] || []).filter(
+                        (s) =>
+                          s &&
+                          s.toLowerCase() !== "único" &&
+                          s.toLowerCase() !== "unico",
+                      )
+                    : (departamento && SETORES[departamento]
+                        ? SETORES[departamento]
+                        : [])
+                }
+                disabled={!reparticao && (!departamento || !SETORES[departamento])}
               />
 
               <SelectGroup

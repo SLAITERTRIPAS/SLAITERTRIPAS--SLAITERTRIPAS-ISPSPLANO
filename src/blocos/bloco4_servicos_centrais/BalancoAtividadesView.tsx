@@ -310,7 +310,7 @@ export default function BalancoAtividadesView({
 
             <div className="absolute bottom-[20mm] w-full text-center">
               <p className="text-slate-500 font-bold  text-xs tracking-widest mb-1">
-                SIGEP - Sistema Integrado de Gestão
+                SIGEP - Sistema Integrado de Gestão de Processo
               </p>
               <p className="text-slate-400 font-medium text-sm">
                 {selectedYear}

@@ -16,9 +16,13 @@ import {
   Maximize2,
   Minimize2,
   Eye,
+  Sliders,
+  Sparkles,
+  Stamp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { openPrintDocumentWindow } from "../../lib/printUtils";
+import { ReportStudioModal } from "../ReportStudioModal";
 
 export interface DocumentFile {
   name: string;
@@ -48,6 +52,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   const [zoom, setZoom] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isReportStudioOpen, setIsReportStudioOpen] = useState(false);
 
   if (!isOpen || !file) return null;
 
@@ -114,10 +119,21 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
 
   const handlePrint = () => {
     if (resolvedUrl) {
-      const printWindow = window.open(resolvedUrl, "_blank");
-      if (printWindow) {
+      let printWindow: Window | null = null;
+      try {
+        printWindow = window.open(resolvedUrl, "_blank");
+      } catch {
+        printWindow = null;
+      }
+      if (printWindow && !printWindow.closed) {
         printWindow.focus();
-        printWindow.print();
+        setTimeout(() => {
+          try {
+            printWindow?.print();
+          } catch {
+            printElementById("print-area");
+          }
+        }, 500);
       } else {
         printElementById("print-area");
       }
@@ -215,6 +231,15 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                   <RotateCcw size={14} />
                 </button>
               </div>
+
+              <button
+                onClick={() => setIsReportStudioOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+                title="Abrir no Estúdio Profissional de Relatórios e Assinatura"
+              >
+                <Stamp size={15} />
+                <span>Estúdio de Relatórios</span>
+              </button>
 
               <button
                 onClick={handlePrint}
@@ -422,6 +447,30 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
             </div>
           </footer>
         </motion.div>
+
+        {/* Modal de Estúdio Profissional de Relatórios e Impressão Avançada */}
+        <ReportStudioModal
+          isOpen={isReportStudioOpen}
+          onClose={() => setIsReportStudioOpen(false)}
+          title={`Relatório / Documento: ${fileName}`}
+          documentNumber={processNo || "SIGEP-2026-DOC"}
+          department="Instituto Superior Politécnico de Songo"
+          contentHtml={`
+            <div style="font-family: serif; padding: 10px;">
+              <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">Ficha Resumo do Documento Anexo</h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+                <tr><td style="padding: 6px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Nome do Ficheiro:</td><td style="padding: 6px; border: 1px solid #cbd5e1;">${fileName}</td></tr>
+                <tr><td style="padding: 6px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Nº de Processo / Expediente:</td><td style="padding: 6px; border: 1px solid #cbd5e1;">${processNo || "Não especificado"}</td></tr>
+                <tr><td style="padding: 6px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Colaborador / Requerente:</td><td style="padding: 6px; border: 1px solid #cbd5e1;">${collaboratorName || "SLAITER"}</td></tr>
+                <tr><td style="padding: 6px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Data de Registo:</td><td style="padding: 6px; border: 1px solid #cbd5e1;">${new Date().toLocaleString("pt-PT")}</td></tr>
+              </table>
+              <div style="padding: 15px; border: 1px solid #e2e8f0; background: #fafafa; border-radius: 8px;">
+                <p style="margin-bottom: 10px; font-weight: bold; color: #1e3a8a;">Declaração de Validação Institucional:</p>
+                <p style="line-height: 1.6; color: #334155;">Certifica-se que o documento supramencionado foi devidamente analisado, submetido a verificação de conformidade e anexado ao processo individual digital no âmbito dos procedimentos administrativos do Instituto Superior Politécnico de Songo.</p>
+              </div>
+            </div>
+          `}
+        />
       </div>
     </AnimatePresence>
   );

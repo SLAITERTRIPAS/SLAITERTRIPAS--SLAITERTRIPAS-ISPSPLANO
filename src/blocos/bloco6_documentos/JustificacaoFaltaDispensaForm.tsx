@@ -1038,7 +1038,7 @@ export default function JustificacaoFaltaDispensaForm({
               MINISTÉRIO DA CIÊNCIA, TECNOLOGIA E ENSINO SUPERIOR
             </h2>
             <h3 className="text-[10pt] sm:text-[11pt] font-black uppercase tracking-wider text-[#800000] font-serif leading-tight pt-0.5">
-              INSTITUTO SUPERIOR POLITÉCNICO DE SONGO
+              {String(user?.instituicaoNome || "INSTITUTO SUPERIOR POLITÉCNICO DE SONGO").toUpperCase()}
             </h3>
 
             {/* TÍTULO PRINCIPAL DINÂMICO DO DOCUMENTO */}
@@ -1635,11 +1635,11 @@ export default function JustificacaoFaltaDispensaForm({
           </div>
         </div>
 
-        {/* ================= RODAPÉ OFICIAL DO ISPS ================= */}
+        {/* ================= RODAPÉ OFICIAL DA INSTITUIÇÃO ================= */}
         <div className="mt-6 pt-2 border-t-[3px] border-[#800000] flex justify-between items-center text-[7.5pt] sm:text-[8pt] text-slate-900 font-serif leading-tight">
           <div className="text-left">
             <p>
-              <span className="font-bold">ISPS</span> | Campus principal: Bairro Catondo, Vila de Songo, Distrito de Cahora-Bassa,
+              <span className="font-bold">{user?.instituicaoNome || "ISPS"}</span> | Gabinete de Secretariado e Serviços Administrativos,
             </p>
             <p>
               Tel: +258 875 253 322, Fax: +258 252 82337/8, email:{" "}

@@ -639,14 +639,26 @@ export function UserManagementView({
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setAllUsers(snap.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+        const rawUsers = snap.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+        const isSystemOwner = currentUser?.isOwner === true && !currentUser?.instituicaoId || currentUser?.isProgrammer === true || String(currentUser?.email || "").toLowerCase() === "slaitertripas@gmail.com";
+        const filtered = isSystemOwner
+          ? rawUsers
+          : rawUsers.filter((u: any) => u.instituicaoId === currentUser?.instituicaoId);
+        setAllUsers(filtered);
         setUsersLoading(false);
       },
       (err: any) => {
         console.warn("Aviso ao carregar utilizadores em tempo real:", err?.message || String(err));
         try {
           const local = localStorage.getItem("sigep_local_users") || localStorage.getItem("sigep_users");
-          if (local) setAllUsers(JSON.parse(local));
+          if (local) {
+            const rawUsers = JSON.parse(local);
+            const isSystemOwner = currentUser?.isOwner === true && !currentUser?.instituicaoId || currentUser?.isProgrammer === true || String(currentUser?.email || "").toLowerCase() === "slaitertripas@gmail.com";
+            const filtered = isSystemOwner
+              ? rawUsers
+              : rawUsers.filter((u: any) => u.instituicaoId === currentUser?.instituicaoId);
+            setAllUsers(filtered);
+          }
         } catch (_) {}
         setUsersLoading(false);
       },

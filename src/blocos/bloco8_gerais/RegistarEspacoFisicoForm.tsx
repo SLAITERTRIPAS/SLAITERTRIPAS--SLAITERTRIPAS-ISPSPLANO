@@ -7,23 +7,43 @@ export default function RegistarEspacoFisicoForm({
   onCancel,
   courseName,
   onSubmit,
+  initialTipo,
 }: {
   onCancel: () => void;
   courseName?: string;
   onSubmit?: (data: any) => void;
+  initialTipo?: string;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [bloco, setBloco] = useState("");
   const [piso, setPiso] = useState("");
   const [sala, setSala] = useState("");
-  const [tipo, setTipo] = useState("Sala de Aula");
+  const [tipo, setTipo] = useState(initialTipo || "Sala de Aula");
+
+  const cursos = [
+    "Engenharia Elétrica",
+    "Engenharia Eletrónica e de Telecomunicações",
+    "Engenharia de Energias Renováveis",
+    "Engenharia de Construção Civil",
+    "Engenharia Hidráulica",
+    "Engenharia de Construção Mecânica",
+    "Engenharia Termotécnica",
+    "Engenharia Informática",
+    "Ciências Biológicas",
+    "Economia",
+    "Matemática",
+    "Física",
+    "Química"
+  ];
+
+  const [selectedCurso, setSelectedCurso] = useState(courseName || "Engenharia Elétrica");
 
   const handleLocalSubmit = async () => {
     setIsSubmitting(true);
     try {
       if (onSubmit) {
-        await onSubmit({ bloco, piso, sala, tipo, courseName });
+        await onSubmit({ bloco, piso, sala, tipo, courseName: selectedCurso });
       }
       setIsSubmitted(true);
     } catch (error) {
@@ -91,6 +111,22 @@ export default function RegistarEspacoFisicoForm({
 
         <div className="p-8 space-y-6">
           <div className="grid grid-cols-2 gap-6">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-gray-500 mb-2 tracking-widest">
+                CURSO DESTINATÁRIO / ATRIBUÍDO
+              </label>
+              <select
+                value={selectedCurso}
+                onChange={(e) => setSelectedCurso(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg text-sm bg-white"
+              >
+                {cursos.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-2 tracking-widest">
                 BLOCO / EDIFÍCIO
@@ -154,6 +190,7 @@ export default function RegistarEspacoFisicoForm({
                 <option>Sala de Aula</option>
                 <option>Laboratório</option>
                 <option>Oficina</option>
+                <option>Auditório</option>
               </select>
             </div>
           </div>

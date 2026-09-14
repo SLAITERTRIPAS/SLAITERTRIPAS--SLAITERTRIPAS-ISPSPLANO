@@ -27,6 +27,8 @@ const isIgnorableSystemError = (err: any) => {
     m.includes("resource-exhausted") ||
     m.includes("resource_exhausted") ||
     m.includes("quota exceeded") ||
+    m.includes("resizeobserver loop completed with undelivered notifications") ||
+    m.includes("resizeobserver loop limit exceeded") ||
     m.includes("firestore (11.")
   );
 };
@@ -118,7 +120,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               !
             </div>
             <h2 className="text-xl font-black mb-2 text-white tracking-tight">
-              Recuperação do Sistema SIGEP
+              Recuperação do Sistema SIGEP: Sistema Integrado de Gestão de Processo
             </h2>
             <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Ocorreu uma instabilidade pontual na exibição do módulo atual. Pode tentar recarregar ou voltar ao ecrã inicial com segurança.

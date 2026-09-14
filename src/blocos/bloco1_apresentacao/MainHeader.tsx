@@ -20,6 +20,9 @@ import {
   Database,
   X,
   RefreshCcw,
+  Cpu,
+  Sparkles,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import NotificationCenter from "../bloco5_sistema/NotificationCenter";
@@ -41,6 +44,7 @@ interface MainHeaderProps {
   unreadMessagesCount?: number;
   onOpenMessages?: () => void;
   onOpenBackup?: () => void;
+  onOpenQuantumAI?: () => void;
   onMinimize?: () => void;
   onSync?: () => void;
 }
@@ -115,6 +119,7 @@ export default function MainHeader({
   unreadMessagesCount = 0,
   onOpenMessages,
   onOpenBackup,
+  onOpenQuantumAI,
   onMinimize,
   onSync,
 }: MainHeaderProps) {
@@ -187,29 +192,53 @@ export default function MainHeader({
   }, []);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      const docEl = document.documentElement;
-      const requestMethod =
-        docEl.requestFullscreen ||
-        (docEl as any).mozRequestFullScreen ||
-        (docEl as any).webkitRequestFullScreen ||
-        (docEl as any).msRequestFullscreen;
-      if (requestMethod) {
-        requestMethod.call(docEl).catch((err) => {
-          console.warn("Erro ao tentar entrar em tela cheia:", err);
-        });
+    try {
+      const isAppMaxed = document.body.classList.contains('app-maximized-fullscreen');
+      if (!isAppMaxed && (!document.fullscreenElement && !(document as any).webkitFullscreenElement)) {
+        const docEl = document.documentElement;
+        const requestMethod =
+          docEl.requestFullscreen ||
+          (docEl as any).mozRequestFullScreen ||
+          (docEl as any).webkitRequestFullScreen ||
+          (docEl as any).msRequestFullscreen;
+        if (requestMethod) {
+          const res = requestMethod.call(docEl);
+          if (res && typeof res.catch === "function") {
+            res.catch((err: any) => {
+              // Fallback to app-level fullscreen if iframe restricts it
+              document.body.classList.add('app-maximized-fullscreen');
+              setIsFullscreen(true);
+            });
+          } else {
+            setIsFullscreen(true);
+          }
+        } else {
+          document.body.classList.add('app-maximized-fullscreen');
+          setIsFullscreen(true);
+        }
+      } else {
+        document.body.classList.remove('app-maximized-fullscreen');
+        const exitMethod =
+          document.exitFullscreen ||
+          (document as any).mozCancelFullScreen ||
+          (document as any).webkitExitFullscreen ||
+          (document as any).msExitFullscreen;
+        if (exitMethod) {
+          const res = exitMethod.call(document);
+          if (res && typeof res.catch === "function") {
+            res.catch((err: any) => {
+              setIsFullscreen(false);
+            });
+          } else {
+            setIsFullscreen(false);
+          }
+        } else {
+          setIsFullscreen(false);
+        }
       }
-    } else {
-      const exitMethod =
-        document.exitFullscreen ||
-        (document as any).mozCancelFullScreen ||
-        (document as any).webkitExitFullscreen ||
-        (document as any).msExitFullscreen;
-      if (exitMethod) {
-        exitMethod.call(document).catch((err) => {
-          console.warn("Erro ao tentar sair de tela cheia:", err);
-        });
-      }
+    } catch (err) {
+      document.body.classList.toggle('app-maximized-fullscreen');
+      setIsFullscreen(prev => !prev);
     }
   };
 
@@ -382,6 +411,24 @@ export default function MainHeader({
 
             {/* System Icons (Window Controls style) */}
             <div className="flex items-center gap-1.5 md:gap-2">
+              {/* Botão de IA Quântica SIGDE - Apenas para Administrador Geral / Proprietário */}
+              {isSuperBossUser(user) && (
+                <button
+                  type="button"
+                  onClick={onOpenQuantumAI}
+                  title="IA Quântica SIGDE (99.8% Coerência) - Abrir Copiloto Inteligente"
+                  className="h-7 sm:h-8 px-2 sm:px-2.5 flex items-center gap-1.5 border-2 border-cyan-400 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.3)] active:scale-95 text-[11px] font-bold"
+                >
+                  <Cpu size={15} className="text-cyan-300 animate-pulse" />
+                  <span className="hidden xl:inline text-cyan-200">IA Quântica SIGDE</span>
+                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-400/20 text-emerald-300 font-bold border border-cyan-400/30">
+                    99.8%
+                  </span>
+                </button>
+              )}
+
+              {/* Botão Projeto Científico removido */}
+              
               {user && (
                 <button
                   onClick={onSync}

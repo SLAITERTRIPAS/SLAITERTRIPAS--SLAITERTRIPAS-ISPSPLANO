@@ -2130,10 +2130,20 @@ export default function PlanoWorkflowView({
     const deptsReparticoes = REPARTICOES[matchedKey] || [];
 
     deptsReparticoes.forEach((rep) => {
-      list.push({ name: rep, type: "Repartição" });
+      if (!list.some((item) => item.name.toLowerCase() === rep.toLowerCase())) {
+        list.push({ name: rep, type: "Repartição" });
+      }
       const sectorsOfRep = SETORES[rep] || [];
       sectorsOfRep.forEach((sec) => {
-        list.push({ name: sec, type: "Setor", parentReparticao: rep });
+        const cleanSec = sec ? sec.trim() : "";
+        if (
+          cleanSec &&
+          cleanSec.toLowerCase() !== "único" &&
+          cleanSec.toLowerCase() !== "unico" &&
+          !list.some((item) => item.name.toLowerCase() === cleanSec.toLowerCase())
+        ) {
+          list.push({ name: cleanSec, type: "Setor", parentReparticao: rep });
+        }
       });
     });
 
@@ -2153,6 +2163,8 @@ export default function PlanoWorkflowView({
 
         if (
           repCandidate &&
+          repCandidate.trim().toLowerCase() !== "único" &&
+          repCandidate.trim().toLowerCase() !== "unico" &&
           !list.some((item) => String(item.name).toLowerCase() === String(repCandidate).toLowerCase())
         ) {
           const type =
@@ -2160,11 +2172,13 @@ export default function PlanoWorkflowView({
             String(repCandidate).toUpperCase().includes("SECTOR")
               ? "Setor"
               : "Repartição";
-          list.push({ name: repCandidate, type: type as any });
+          list.push({ name: repCandidate.trim(), type: type as any });
         }
 
         if (
           sectorCandidate &&
+          sectorCandidate.trim().toLowerCase() !== "único" &&
+          sectorCandidate.trim().toLowerCase() !== "unico" &&
           !list.some((item) => item.name.toLowerCase() === sectorCandidate.toLowerCase())
         ) {
           const type =
@@ -2172,7 +2186,7 @@ export default function PlanoWorkflowView({
             sectorCandidate.toUpperCase().includes("REPARTICAO")
               ? "Repartição"
               : "Setor";
-          list.push({ name: sectorCandidate, type: type as any, parentReparticao: repCandidate });
+          list.push({ name: sectorCandidate.trim(), type: type as any, parentReparticao: repCandidate });
         }
       }
     });
@@ -4800,7 +4814,7 @@ export default function PlanoWorkflowView({
                       </button>
                     </div>
 
-                    {reparticoesAndSectorsForThisDept.map((item) => {
+                    {reparticoesAndSectorsForThisDept.map((item, idx) => {
                       const sector = item.name;
                       const sectorActs = filteredActivities.filter((a) => {
                         if (sector === "Setores Gerais") {
@@ -4822,7 +4836,7 @@ export default function PlanoWorkflowView({
 
                       return (
                         <div
-                          key={sector}
+                          key={`${item.parentReparticao || ''}-${item.name}-${idx}`}
                           className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm"
                         >
                           <div className="p-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
@@ -5137,7 +5151,7 @@ export default function PlanoWorkflowView({
 
                             {/* Lista de todos os setores e repartições subordinados a este departamento */}
                             <div className="space-y-4 px-2 pb-2">
-                              {subordinateSectors.map((item) => {
+                              {subordinateSectors.map((item, idx) => {
                                 const sector = item.name;
                                 const sectorActs = deptActs.filter((a) => {
                                   if (sector === "Setores Gerais") {
@@ -5159,7 +5173,7 @@ export default function PlanoWorkflowView({
 
                                 return (
                                   <div
-                                    key={sector}
+                                    key={`${item.parentReparticao || ''}-${item.name}-${idx}`}
                                     className="bg-slate-50/70 border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs"
                                   >
                                     <div className="p-4 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">

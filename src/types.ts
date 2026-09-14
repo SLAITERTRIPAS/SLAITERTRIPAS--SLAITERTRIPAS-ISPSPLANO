@@ -140,7 +140,8 @@ export interface ProcessoIndividual {
 export interface Event {
   id: string;
   title: string;
-  date: string; // ISO string
+  date: string; // ISO string (Data Início)
+  endDate?: string; // ISO string (Data Final)
   startTime: string;
   endTime: string;
   location: string;
@@ -148,6 +149,13 @@ export interface Event {
   type:
     | "meeting"
     | "activity"
+    | "Reunião"
+    | "Formação / Capacitação"
+    | "Monitoria / Acompanhamento"
+    | "Inspeção / Auditoria"
+    | "Seminário / Workshop"
+    | "Trabalho de Campo"
+    | "Evento Académico"
     | "Data Comemorativa"
     | "Feriado Nacional"
     | "Feriado Institucional"
@@ -157,6 +165,7 @@ export interface Event {
     | string;
   agenda: string;
   preside?: string;
+  organizador?: string;
   remetente?: string;
   status?: "active" | "archived";
 }

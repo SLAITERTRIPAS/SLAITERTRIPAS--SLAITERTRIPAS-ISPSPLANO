@@ -23,6 +23,7 @@ import {
   safeJSONStringify,
 } from "../../lib/utils";
 import { EFETIVO_GERAL_DATA } from "../../constants/colaboradoresList";
+import { printElementById } from "../../lib/printUtils";
 import RegistarFuncionarioForm from "../bloco8_gerais/RegistarFuncionarioForm";
 import { holidays2026 } from "../../constants/holidays";
 import { auth, db } from "../../lib/firebase";
@@ -135,15 +136,17 @@ const findLocalUser = (lowerInput: string, inputPass?: string) => {
       name: "SLAITER TRIPAS",
       nome: "SLAITER TRIPAS",
       designacao: "SLAITER TRIPAS",
-      role: "Administrador",
-      cargo: "proprietario e Administrador do Sistema",
-      funcao: "proprietario e Administrador do Sistema",
-      orgao: "proprietario",
-      unidade: "proprietario",
-      unidadeOrganica: "proprietario",
-      direcao: "proprietario",
-      departamento: "proprietario",
-      status: "Ativo / proprietario",
+      role: "Proprietário / Administrador Geral",
+      cargo: "Proprietário, Programador e Administrador Geral",
+      cargoChefia: "Nenhum (Administrador Geral)",
+      funcao: "Proprietário, Programador e Administrador Geral",
+      categoria: "Proprietário, Programador e Administrador Geral",
+      orgao: "Administração Geral do Sistema",
+      unidade: "Administração Geral do Sistema",
+      unidadeOrganica: "Administração Geral do Sistema",
+      direcao: "Administração Geral do Sistema",
+      departamento: "Administração Geral do Sistema",
+      status: "Ativo / Proprietário e Administrador Geral",
       efetivo: false,
       isOwner: true,
       isProgrammer: true,
@@ -801,7 +804,7 @@ export default function LoginScreen({
           );
         } else {
           setError(
-            "Dados não encontrados ou você não é colaborador do ISPS.",
+            "Dados não encontrados ou você não é colaborador da instituição correspondente.",
           );
         }
         setLoading(false);
@@ -850,18 +853,24 @@ export default function LoginScreen({
           return;
         }
 
-        // Verifica se o colaborador está afeto a um setor
+        // Verifica se o colaborador está afeto a um setor, repartição, departamento ou direção
         const cargoRole = (user.role || user.categoria || user.cargo || "").toLowerCase();
         const isSuperUser =
           cargoRole.includes("proprietario") ||
           cargoRole.includes("proprietário") ||
+          cargoRole.includes("administrador") ||
+          user.role === "Administrador" ||
+          user.role === "Administrador do Sistema" ||
+          user.role === "Administrador da Instituição" ||
           user.email === "admin@songo.ac.mz" ||
           user.email === "slaitertripas@gmail.com";
         
         const dir = (user.direcao || "").trim();
         const dep = (user.departamento || "").trim();
+        const rep = (user.reparticao || "").trim();
+        const sec = (user.sector || user.setor || "").trim();
         const area = (user.areaDeAfetacao || "").trim();
-        const isUnassigned = !dir && !dep && !area;
+        const isUnassigned = !dir && !dep && !rep && !sec && !area;
 
         if (!isSuperUser && isUnassigned) {
           setError("Aguarde a sua afetação.");
@@ -940,6 +949,16 @@ export default function LoginScreen({
         }
 
         const calcArea = (cc: any): string => {
+          if (
+            cc.areaDeAfetacao &&
+            cc.areaDeAfetacao !== "Nenhum" &&
+            cc.areaDeAfetacao !== "-"
+          )
+            return cc.areaDeAfetacao;
+          if (cc.sector && cc.sector !== "Nenhum" && cc.sector !== "-")
+            return cc.sector;
+          if (cc.setor && cc.setor !== "Nenhum" && cc.setor !== "-")
+            return cc.setor;
           if (
             cc.reparticao &&
             cc.reparticao !== "Nenhum" &&
@@ -1022,16 +1041,27 @@ export default function LoginScreen({
           const area = calcArea(user);
           if (area) {
             user.areaDeAfetacao = area;
-            if (user.status !== "Afetado") user.status = "Afetado";
+            user.status = "Afetado";
+            if (matchedDoc && !isQuotaError) {
+              updateDoc(doc(db, "users", matchedDoc.id), {
+                status: "Afetado",
+                areaDeAfetacao: area,
+              }).catch(console.warn);
+            }
           }
         }
 
         // Verificar alocação (Status 'Afetado' e areaDeAfetacao)
-        const isAfetado = user.status === "Afetado" && user.areaDeAfetacao;
+        const isAfetado =
+          (user.status === "Afetado" && user.areaDeAfetacao) ||
+          Boolean(user.areaDeAfetacao) ||
+          Boolean(user.sector || user.setor || user.reparticao || user.departamento || user.direcao);
         const isAdmin =
           user.role === "Administrador" ||
           user.role === "Administrador do Sistema" ||
-          String(user.role).toLowerCase().includes("admin");
+          user.role === "Administrador da Instituição" ||
+          String(user.role).toLowerCase().includes("admin") ||
+          String(user.cargoChefia || "").toLowerCase().includes("administrador");
         const isProgrammer = user.email === "slaitertripas@gmail.com";
 
         if (!isAfetado && !isAdmin && !isProgrammer) {
@@ -1812,7 +1842,7 @@ export default function LoginScreen({
       {/* Modal de Detalhes da Publicação / Evento / Actividade */}
       {selectedEventDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-900 animate-scaleUp">
+          <div id="login-event-detail-print-area" className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-900 animate-scaleUp">
             {/* Modal Header */}
             <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-3">
@@ -1952,7 +1982,7 @@ export default function LoginScreen({
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => printElementById("login-event-detail-print-area", "Comprovativo do Evento - SIGEP Songo", "portrait", "A4")}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />

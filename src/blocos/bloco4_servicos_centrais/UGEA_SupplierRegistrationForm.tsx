@@ -3,6 +3,7 @@ import { ArrowLeft, Save, Building2, MapPin, UserCheck, CreditCard, Briefcase, F
 import { Supplier } from "../../types";
 import { usePersistentDraft } from "../../hooks/usePersistentDraft";
 import { DraftModal, SyncIndicator } from "../../components/ui/DraftMemoryUI";
+import { printElementById } from "../../lib/printUtils";
 
 interface SupplierRegistrationFormProps {
   onBack: () => void;
@@ -135,13 +136,13 @@ export default function UGEA_SupplierRegistrationForm({
   };
 
   const handlePrint = () => {
-    window.print();
+    printElementById("ugea-supplier-form-print-area", "Ficha de Inscrição de Fornecedor - UGEA Songo", "portrait", "A4");
   };
 
   if (!isDraftLoaded && !showDraftModal && !initialData) return null;
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 p-3 sm:p-6 md:p-8 relative print:bg-white print:p-0">
+    <div id="ugea-supplier-form-print-area" className="min-h-screen w-full bg-slate-50 p-3 sm:p-6 md:p-8 relative print:bg-white print:p-0">
       <DraftModal
         show={showDraftModal && !initialData}
         onRecover={recoverDraft}

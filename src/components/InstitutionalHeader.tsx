@@ -75,8 +75,27 @@ export const InstitutionalHeader = ({
   const selectedYear = year || 2025;
   const isPESOEHeader = String(title || "").toUpperCase().includes("PESOE");
 
+  // Resolver instituição personalizada do utilizador autenticado
+  let instName = "Instituto Superior Politécnico de Songo";
+  let instLogo = "https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad";
+  try {
+    const stored = localStorage.getItem("sigep_logged_in_user") || localStorage.getItem("sigep_user");
+    if (stored) {
+      const u = JSON.parse(stored);
+      if (u.instituicaoNome) instName = u.instituicaoNome;
+      else if (u.instituicao && typeof u.instituicao === "string" && !u.instituicao.startsWith("inst-")) instName = u.instituicao;
+      else if (u.tenantName) instName = u.tenantName;
+
+      if (u.instituicaoLogo) instLogo = u.instituicaoLogo;
+    }
+  } catch (e) {}
+
+  if (unidadeName && unidadeName !== "Instituto Superior Politécnico de Songo" && unidadeName !== "ISPS") {
+    instName = unidadeName;
+  }
+
   // Garantir que os nomes estão formatados corretamente e resolver o Órgão correto para Plano de Atividade
-  const displayUnidade = resolveOrgaoName(unidadeName, direcaoName);
+  const displayUnidade = resolveOrgaoName(unidadeName || instName, direcaoName);
   const displayDirecao = tc(String(direcaoName || "").trim());
   const displayDepartamento = tc(String(departamentoName || "").trim());
   const displayReparticao = tc(String(reparticaoName || "").trim());
@@ -133,16 +152,16 @@ export const InstitutionalHeader = ({
 
         {/* 3. Instituto Superior Politécnico de Songo */}
         <h2 className="text-[1.8rem] font-black text-slate-900 tracking-tight mb-2 uppercase">
-          Instituto Superior Politécnico de Songo
+          {instName}
         </h2>
 
         {/* 4. Província e Distrito */}
         <div className="flex flex-col items-center gap-0.5 mb-6">
           <h3 className="text-xs font-bold text-slate-600 tracking-[0.12em] uppercase">
-            Província de Tete
+            {instName.toLowerCase().includes("songo") ? "Província de Tete" : "Moçambique"}
           </h3>
           <h3 className="text-xs font-bold text-slate-600 tracking-[0.12em] uppercase">
-            Distrito de Cahora-Bassa
+            {instName.toLowerCase().includes("songo") ? "Distrito de Cahora-Bassa" : "Sede Principal"}
           </h3>
         </div>
         
@@ -170,25 +189,25 @@ export const InstitutionalHeader = ({
       {/* 1. Logotipo do ISPS Centrado */}
       <div className="mb-6 flex justify-center items-center w-full text-center print:mb-4 print:flex print:justify-center print:items-center">
         <img
-          src="https://lh3.googleusercontent.com/d/11zvvpOpZARM1yk_irEDpjJ-qBKlTlhad"
-          alt="Logotipo ISPS"
-          className="w-36 h-auto object-contain mx-auto print:mx-auto print:block"
+          src={instLogo}
+          alt={`Logotipo ${instName}`}
+          className="w-36 h-auto max-h-36 object-contain mx-auto print:mx-auto print:block rounded-xl"
           referrerPolicy="no-referrer"
         />
       </div>
 
       {/* 2. Nome do Instituto */}
       <h2 className="text-[2.2rem] font-black text-slate-900 tracking-tight mb-3 uppercase">
-        Instituto Superior Politécnico de Songo
+        {instName}
       </h2>
 
       {/* 3. Província / Distrito / Localidade */}
       <div className="flex flex-col items-center gap-1 mb-5">
         <h3 className="text-base font-bold text-slate-700 tracking-[0.1em]">
-          Província de Tete
+          {instName.toLowerCase().includes("songo") ? "Província de Tete" : "Moçambique"}
         </h3>
         <h3 className="text-base font-bold text-slate-700 tracking-[0.1em]">
-          Distrito de Cahora-Bassa
+          {instName.toLowerCase().includes("songo") ? "Distrito de Cahora-Bassa" : "Sede Principal"}
         </h3>
         <h3 className="text-base font-bold text-slate-700 tracking-[0.1em]">
           Songo

@@ -18,6 +18,8 @@ import Modal from "./blocos/bloco1_apresentacao/Modal";
 import LoadingSpinner from "./blocos/bloco1_apresentacao/LoadingSpinner";
 import SplashScreen from "./blocos/bloco1_apresentacao/SplashScreen";
 import BackupRestoreModal from "./components/modals/BackupRestoreModal";
+import { QuantumCopilotModal } from "./components/quantum/QuantumCopilotModal";
+import { QuantumFloatingOrb } from "./components/quantum/QuantumFloatingOrb";
 import { ViewRenderer } from "./components/ViewRenderer";
 import { EFETIVO_GERAL_DATA } from "./constants/colaboradoresList";
 import { runAutomaticBackupIfNeeded, autoRestoreOnStartup } from "./lib/backupService";
@@ -33,6 +35,8 @@ import {
 } from "./types";
 import {
   isSuperBossUser,
+  isInstitutionalAdminUser,
+  isHRBossUser,
   isPatrimonioBossOrAdmin,
   getUserWorkspace,
   determineUserRole,
@@ -130,6 +134,7 @@ export default function App() {
     | "processos"
     | "suppliers"
     | "expediente"
+    | "projeto_cientifico"
   >("login");
   const [statsActiveItem, setStatsActiveItem] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,6 +200,7 @@ export default function App() {
     shared_by?: string;
   }>({});
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showQuantumModal, setShowQuantumModal] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [backupAlert, setBackupAlert] = useState<{ message: string; type: string } | null>(null);
   const [showSectorSelector, setShowSectorSelector] = useState(false);
@@ -627,15 +633,17 @@ export default function App() {
           designacao: "SLAITER TRIPAS",
           email: "slaitertripas@gmail.com",
           usuario: "slaitertripas@gmail.com",
-          role: "Administrador",
-          cargo: "proprietario e Administrador do Sistema",
-          funcao: "proprietario e Administrador do Sistema",
-          orgao: "proprietario",
-          unidade: "proprietario",
-          unidadeOrganica: "proprietario",
-          direcao: "proprietario",
-          departamento: "proprietario",
-          status: "Ativo / proprietario",
+          role: "Proprietário / Administrador Geral",
+          cargo: "Proprietário, Programador e Administrador Geral",
+          cargoChefia: "Nenhum (Administrador Geral)",
+          funcao: "Proprietário, Programador e Administrador Geral",
+          categoria: "Proprietário, Programador e Administrador Geral",
+          orgao: "Administração Geral do Sistema",
+          unidade: "Administração Geral do Sistema",
+          unidadeOrganica: "Administração Geral do Sistema",
+          direcao: "Administração Geral do Sistema",
+          departamento: "Administração Geral do Sistema",
+          status: "Ativo / Proprietário e Administrador Geral",
           efetivo: false,
           isOwner: true,
           isProgrammer: true,
@@ -821,8 +829,36 @@ export default function App() {
     };
 
     window.addEventListener("sigep_data_restored", handleDataRestored);
+    
+    // Ouvinte para mudar de vista globalmente
+    const handleOpenViewEvent = (e: any) => {
+      if (e.detail?.view) {
+        handleSetView(e.detail.view);
+      }
+    };
+    window.addEventListener("open_view", handleOpenViewEvent);
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.altKey && (e.key === "q" || e.key === "Q")) || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "q" || e.key === "Q"))) {
+        e.preventDefault();
+        if (!isSuperBossUser(user)) return;
+        setShowQuantumModal((prev) => !prev);
+      }
+    };
+    const handleOpenQuantumEvent = () => {
+      if (isSuperBossUser(user)) {
+        setShowQuantumModal(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("open_quantum_copilot", handleOpenQuantumEvent);
+
     return () => {
       window.removeEventListener("sigep_data_restored", handleDataRestored);
+      window.removeEventListener("open_view", handleOpenViewEvent);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("open_quantum_copilot", handleOpenQuantumEvent);
     };
   }, []);
 
@@ -1175,12 +1211,24 @@ export default function App() {
     setHistoryStack([]);
 
     // Redirecionamento automático baseado na alocação do utilizador
-    const isAdmin = isSuperBossUser(userData);
+    const isSuperBoss = isSuperBossUser(userData);
+    const isInstitutionalAdmin = isInstitutionalAdminUser(userData);
+    const isHRBoss = isHRBossUser(userData);
     const isTecnico = isTechnicianUser(userData);
 
-    if (isAdmin) {
-      // Administradores continuam a ir para o menu principal para gestão total
+    if (isSuperBoss) {
+      // Administrador Geral continua a ir para o menu principal para gestão total
       setView("menu");
+    } else if (isInstitutionalAdmin) {
+      // Administrador da Instituição: induzido diretamente à área do Sistema
+      setDashboardTitle("Sistema");
+      setDashboardActiveItem("Gestão das Instituições");
+      setView("dashboard");
+    } else if (isHRBoss) {
+      // Chefe da Repartição de Pessoal: direcionado diretamente para a área de trabalho da Repartição de Pessoal
+      setDashboardTitle("Repartição de Pessoal");
+      setDashboardActiveItem("Gestão de Pessoal");
+      setView("dashboard");
     } else if (isTecnico) {
       // Técnicos devem sempre passar pela seleção de setor/área de trabalho
       // Se não tiverem setores atribuídos, oferecemos os setores do departamento deles
@@ -1199,7 +1247,7 @@ export default function App() {
         setDashboardTitle(userData.departamento || userData.direcao || "Departamento de Património");
         setView("sector_selection");
       } else {
-        // Utilizadores comuns são enviados diretamente para a sua área de afetação
+        // Cada colaborador afetado, ao fazer login, será direcionado à sua área de trabalho afetado
         const workspace = getUserWorkspace(userData);
         if (workspace) {
           setDashboardTitle(workspace);
@@ -1457,18 +1505,25 @@ export default function App() {
   };
 
   const isCourse = (title: string) => {
-    const upperTitle = title.toUpperCase();
+    const upperTitle = (title || "").toUpperCase();
     return (
       upperTitle.includes("CURSO") ||
-      upperTitle.includes("DEPARTAMENTO DE ENGENHARIA") ||
-      upperTitle.includes("DEPARTAMENTO DE PESQUISA") ||
+      upperTitle.includes("ENGENHARIA") ||
+      upperTitle.includes("PESQUISA") ||
+      upperTitle.includes("LICENCIATURA") ||
+      upperTitle.includes("MESTRADO") ||
+      upperTitle.includes("PÓS-GRADUAÇÃO") ||
+      upperTitle.includes("POS-GRADUAÇÃO") ||
       upperTitle.includes("DEE") ||
       upperTitle.includes("DECC") ||
-      upperTitle.includes("DECM")
+      upperTitle.includes("DECM") ||
+      upperTitle.includes("DEPARTAMENTO DE ENGENHARIA") ||
+      upperTitle.includes("DEPARTAMENTO DE PESQUISA") ||
+      upperTitle.startsWith("DEPARTAMENTO DE")
     );
   };
 
-  const isAdmin = isSuperBossUser(user);
+  const isAdmin = isSuperBossUser(user) || isInstitutionalAdminUser(user);
 
   const openSubMenu = (
     title: string,
@@ -1869,6 +1924,7 @@ export default function App() {
                   setView("dashboard");
                 }}
                 onOpenBackup={() => setShowBackupModal(true)}
+                onOpenQuantumAI={() => setShowQuantumModal(true)}
                 onMinimize={() => setIsMinimized(true)}
                 onSync={handleSyncData}
                 breadcrumb={[
@@ -1928,23 +1984,48 @@ export default function App() {
             </div>
           </motion.div>
         ) : (
-          <div className="fixed bottom-0 left-0 right-0 h-14 bg-[#121c60]/95 backdrop-blur-md border-t-2 border-[#FFB800] z-[1000] flex items-center px-4 shadow-[0_-8px_30px_rgb(0,0,0,0.5)]">
-            <button onClick={() => setIsMinimized(false)} className="flex items-center gap-3 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-all group active:scale-95">
-              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shadow-[0_0_10px_rgba(255,184,0,0.3)]">
-                <div className="w-3 h-3 bg-[#FFB800] rounded-sm"></div>
+          <div className="fixed inset-0 z-[10000] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-slate-100">
+            <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-[#FFB800] text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 bg-[#121c60] text-[#FFB800] rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                <div className="w-6 h-6 bg-[#FFB800] rounded-md animate-pulse"></div>
               </div>
-              <div className="flex flex-col items-start leading-tight">
-                <span className="text-[9px] font-black tracking-widest text-[#FFB800]">Restaurar Sistema</span>
-                <span className="text-xs font-bold tracking-tight text-white">SIGEP</span>
-              </div>
-              <div className="ml-2 w-1.5 h-1.5 bg-[#00FF00] rounded-full animate-pulse shadow-[0_0_8px_#00FF00]"></div>
-            </button>
+              <span className="px-3 py-1 bg-amber-100 text-amber-900 font-black text-[10px] uppercase tracking-widest rounded-full mb-3">
+                Sistema Minimizado
+              </span>
+              <h3 className="text-xl font-black text-slate-900 mb-2">
+                Ecrã Minimizado
+              </h3>
+              <p className="text-sm font-medium text-slate-600 leading-relaxed mb-6">
+                A aplicação SIGEP está em modo minimizado. Clique no botão abaixo para restaurar a visualização completa do sistema.
+              </p>
+              <button
+                onClick={() => setIsMinimized(false)}
+                className="w-full py-3.5 px-6 bg-[#121c60] hover:bg-[#1b2880] text-[#FFB800] rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl border border-[#FFB800]/40 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <span>Restaurar Ecrã Completo</span>
+                <div className="w-2 h-2 bg-[#00FF00] rounded-full animate-pulse shadow-[0_0_8px_#00FF00]"></div>
+              </button>
+            </div>
           </div>
         )}
       </AnimatePresence>
 
         <Modal isOpen={!!modalMessage} onClose={() => setModalMessage("")} message={modalMessage} />
         <BackupRestoreModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
+        
+        {view !== "login" && isSuperBossUser(user) && (
+          <>
+            <QuantumFloatingOrb
+              currentView={dashboardTitle || view}
+              onOpenCockpit={() => setShowQuantumModal(true)}
+            />
+            <QuantumCopilotModal
+              isOpen={showQuantumModal}
+              onClose={() => setShowQuantumModal(false)}
+              currentView={dashboardTitle || view}
+            />
+          </>
+        )}
         
         {sessionTerminatedNotice && (
           <div className="fixed inset-0 z-[999999] bg-[#0c1236]/85 backdrop-blur-md flex items-center justify-center p-4">

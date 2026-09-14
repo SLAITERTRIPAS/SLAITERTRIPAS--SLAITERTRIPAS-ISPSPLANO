@@ -694,7 +694,7 @@ export default function MonitoriaView({
                         Detalhamento das Atividades
                       </h3>
                       <span className="text-[10px] font-bold text-gray-400">
-                        SIGEP - Sistema Integrado de Gestão
+                        SIGEP - Sistema Integrado de Gestão de Processo
                       </span>
                     </div>
 

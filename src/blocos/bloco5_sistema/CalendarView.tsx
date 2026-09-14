@@ -2,21 +2,16 @@ import React, { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus,
   Clock,
-  MapPin,
-  Users,
   X,
   Calendar as CalendarIcon,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle,
   Lock,
   Unlock,
   Save,
   AlertTriangle,
-  Trash2,
-  Search,
+  RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Event, Nota, PeriodoPlanificacao } from "../../types";
@@ -31,6 +26,7 @@ import {
   ativarContagem30DiasPlanificacao,
   ativarPeriodoRelatorio,
   estenderPrazoPlanificacao,
+  zerarTodosOsPrazos,
   executarSubmissaoAutomaticaSePrazoExpirado,
   getCicloPlanoEstrutura,
   getCicloRelatorioEstrutura,
@@ -39,20 +35,14 @@ import {
 export default function CalendarView({
   events,
   onAddEvent,
-  onUpdateEvent,
-  onDeleteEvent,
-  onAgendar,
-  onNota,
-  title,
-  notes,
   user,
 }: {
   events: Event[];
   onAddEvent?: (event: Omit<Event, "id">) => Promise<any>;
   onUpdateEvent?: (id: string, event: Partial<Event>) => Promise<any>;
   onDeleteEvent?: (id: string) => Promise<any>;
-  onAgendar: () => void;
-  onNota: () => void;
+  onAgendar?: () => void;
+  onNota?: () => void;
   title?: string;
   notes?: Nota[];
   user?: any;
@@ -60,7 +50,6 @@ export default function CalendarView({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [showAgendarOptions, setShowAgendarOptions] = useState(false);
 
   // Período de Planificação state
   const [periodoPlanificacao, setPeriodoPlanificacao] = useState<PeriodoPlanificacao>(DEFAULT_PLANNING_PERIOD);
@@ -104,21 +93,16 @@ export default function CalendarView({
   const planStatus = isPlanificacaoAberta(periodoPlanificacao);
   const relatorioStatus = isRelatorioSemestralAberto(periodoPlanificacao);
 
-
   const [newEvent, setNewEvent] = useState({
     title: "",
-    type: "Reunião" as
-      | "Reunião"
-      | "Encontro"
-      | "Início e Fechamento de Atividade"
-      | "Data Comemorativa"
-      | "Feriado Nacional"
-      | "Feriado Institucional",
+    type: "" as string,
     agenda: "",
-    date: "",
-    startTime: "",
-    endTime: "",
+    date: "", // Data de Início
+    endDate: "", // Data Final
+    startTime: "08:00",
+    endTime: "16:00",
     location: "",
+    organizador: "",
     participants: [] as string[],
   });
 
@@ -159,186 +143,38 @@ export default function CalendarView({
         ? selectedDate.toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0]);
 
+    const eventEndDate = newEvent.endDate || eventDate;
+
     const event: Omit<Event, "id"> = {
       title: newEvent.title,
       date: eventDate,
+      endDate: eventEndDate,
       startTime: newEvent.startTime,
       endTime: newEvent.endTime,
       location: newEvent.location,
       participants: newEvent.participants.join(", "),
-      type:
-        newEvent.type === "Reunião"
-          ? "meeting"
-          : newEvent.type === "Encontro"
-            ? "activity"
-            : (newEvent.type as any),
+      type: newEvent.type,
       agenda: newEvent.agenda,
+      organizador: newEvent.organizador,
     };
 
     if (onAddEvent) await onAddEvent(event);
     setShowModal(false);
     setNewEvent({
       title: "",
-      type: "Reunião",
+      type: "",
       agenda: "",
       date: "",
-      startTime: "",
-      endTime: "",
+      endDate: "",
+      startTime: "08:00",
+      endTime: "16:00",
       location: "",
+      organizador: "",
       participants: [],
     });
   };
 
   const allEvents = [...events, ...holidays2026];
-
-  const [eventFilter, setEventFilter] = useState<"todos" | "reunioes" | "feriados" | "notas">("todos");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const activeYear = currentDate.getFullYear();
-  const activeMonth = currentDate.getMonth();
-
-  const monthEvents = allEvents.filter((e) => {
-    if (!e.date) return false;
-    const [y, m] = e.date.split("-").map(Number);
-    return y === activeYear && m === activeMonth + 1;
-  });
-
-  const monthNotes = (notes || []).filter((n) => {
-    if (!n.date) return false;
-    const [y, m] = n.date.split("-").map(Number);
-    return y === activeYear && m === activeMonth + 1;
-  });
-
-  const rawDisplayEvents = selectedDate
-    ? monthEvents.filter((e) => e.date === selectedDate.toISOString().split("T")[0])
-    : monthEvents;
-
-  const rawDisplayNotes = selectedDate
-    ? monthNotes.filter((n) => n.date === selectedDate.toISOString().split("T")[0])
-    : monthNotes;
-
-  const filteredDisplayItems = [...rawDisplayEvents, ...rawDisplayNotes].filter((item: any) => {
-    const isNote = item.hasOwnProperty("content");
-
-    if (eventFilter === "reunioes") {
-      if (isNote) return false;
-      const t = item.type || "";
-      if (t === "Feriado Nacional" || t === "Feriado Institucional" || t === "Data Comemorativa") return false;
-    } else if (eventFilter === "feriados") {
-      if (isNote) return false;
-      const t = item.type || "";
-      if (t !== "Feriado Nacional" && t !== "Feriado Institucional" && t !== "Data Comemorativa") return false;
-    } else if (eventFilter === "notas") {
-      if (!isNote) return false;
-    }
-
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase();
-      const titleMatch = (item.title || "").toLowerCase().includes(q);
-      const locMatch = (item.location || "").toLowerCase().includes(q);
-      const agendaMatch = (item.agenda || item.content || "").toLowerCase().includes(q);
-      return titleMatch || locMatch || agendaMatch;
-    }
-
-    return true;
-  });
-
-  const renderCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const days = daysInMonth(year, month);
-    const firstDay = firstDayOfMonth(year, month);
-    const calendarDays = [];
-
-    // Empty slots for previous month
-    for (let i = 0; i < firstDay; i++) {
-      calendarDays.push(
-        <div
-          key={`empty-${i}`}
-          className="min-h-0 border border-slate-300/30 bg-transparent"
-        ></div>,
-      );
-    }
-
-    // Days of current month
-    for (let day = 1; day <= days; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const dayEvents = allEvents.filter((e) => e.date === dateStr);
-      const dayNotes = notes?.filter((n) => n.date === dateStr) || [];
-      const isToday =
-        new Date().toDateString() === new Date(year, month, day).toDateString();
-      const isSelected = selectedDate?.toISOString().split("T")[0] === dateStr;
-
-      calendarDays.push(
-        <motion.div
-          key={day}
-          initial={isToday ? { scale: 0.98, opacity: 0 } : false}
-          animate={isToday ? { scale: 1, opacity: 1 } : false}
-          onClick={() => {
-            const d = new Date(year, month, day);
-            setSelectedDate(d);
-            setNewEvent((prev) => ({
-              ...prev,
-              date: d.toISOString().split("T")[0],
-            }));
-            setShowModal(true);
-          }}
-          className={`min-h-0 border p-2 md:p-4 transition-all cursor-pointer relative group flex flex-col overflow-hidden ${
-            isToday
-              ? "border-red-500 border-2 z-10 shadow-lg bg-transparent"
-              : isSelected
-                ? "border-orange-500 bg-transparent"
-                : "border-slate-300/30 bg-transparent hover:bg-white/10"
-          }`}
-        >
-          <div className="flex flex-col items-center gap-2 h-full relative z-10 w-full text-center">
-            <span
-              className={`text-2xl font-black leading-none tracking-tighter transition-colors ${
-                isToday
-                  ? "text-blue-900"
-                  : "text-blue-800 group-hover:text-blue-600"
-              }`}
-            >
-              {day}
-            </span>
-
-            <div className="flex flex-col gap-1 w-full pt-1">
-              {dayEvents.length > 0 &&
-                dayEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="text-[11px] font-medium leading-tight text-blue-900 bg-white/60 backdrop-blur-sm p-1 rounded w-full text-justify hyphens-auto"
-                  >
-                    {event.title}
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          <div className="mt-auto flex justify-between items-center relative z-10">
-            {dayNotes.length > 0 && (
-              <div className="text-[10px] font-black tracking-widest text-red-500">
-                Nota Pendente
-              </div>
-            )}
-          </div>
-        </motion.div>,
-      );
-    }
-
-    // Trailing empty slots to complete 35 or 42 cells (5 or 6 full rows)
-    const totalSlots = calendarDays.length <= 35 ? 35 : 42;
-    while (calendarDays.length < totalSlots) {
-      calendarDays.push(
-        <div
-          key={`empty-trailing-${calendarDays.length}`}
-          className="min-h-0 border border-slate-300/30 bg-transparent"
-        ></div>,
-      );
-    }
-
-    return calendarDays;
-  };
 
   return (
     <div className="w-full flex flex-col justify-center items-center py-6 px-4">
@@ -393,339 +229,166 @@ export default function CalendarView({
           </div>
         </div>
 
-        <div className="w-full flex flex-col xl:flex-row gap-6 relative">
-          {/* Left side: Calendar Grid */}
-          <div className="relative bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col w-full xl:w-[70%] aspect-[35/30]">
-          {/* Background Logo */}
-          <div
-            className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
-            style={{
-              backgroundImage:
-                'url("https://lh3.googleusercontent.com/d/1Xasp7NB08GDtIE2VEwf-O5iycCdDJKg1")',
-              backgroundSize: "100% 100%",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-              opacity: 0.5,
-            }}
-          />
+        <div className="w-full flex justify-center relative">
+          {/* Calendar Grid com dimensões exatas de 1096px por 596px */}
+          <div 
+            className="relative bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden flex flex-col p-8"
+            style={{ width: "1096px", maxWidth: "100%", height: "596px" }}
+          >
+            {/* Background Logo covering entire calendar area */}
+            <div
+              className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
+              style={{
+                backgroundImage:
+                  'url("https://lh3.googleusercontent.com/d/1Xasp7NB08GDtIE2VEwf-O5iycCdDJKg1")',
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                opacity: 0.15,
+              }}
+            />
 
-          <div className="relative z-10 flex flex-col h-full bg-transparent">
-            <div className="grid grid-cols-7 bg-[#10172e] flex-none">
-              {[
-                "Domingo",
-                "Segunda",
-                "Terça",
-                "Quarta",
-                "Quinta",
-                "Sexta",
-                "Sábado",
-              ].map((day, index) => {
-                const isTodayColumn =
-                  new Date().getDay() === index &&
-                  currentDate.getMonth() === new Date().getMonth() &&
-                  currentDate.getFullYear() === new Date().getFullYear();
-
-                return (
-                  <div
-                    key={day}
-                    className={`py-3 text-center text-[11px] md:text-xs font-black tracking-wider transition-colors truncate ${
-                      isTodayColumn
-                        ? "bg-gradient-to-b from-red-600 to-orange-500 text-white z-10 shadow-lg"
-                        : "text-blue-200"
-                    }`}
-                  >
-                    {day}
+            <div className="relative z-10 flex flex-col h-full bg-transparent">
+              {/* Top Header matching reference image: "Junho 2026" and "Moçambique Estatística 2026" */}
+              <div className="flex justify-between items-center pb-4 border-b border-gray-300 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1 bg-white border border-gray-200 p-1 rounded-xl shadow-sm">
+                    <button
+                      onClick={prevMonth}
+                      className="p-1 hover:bg-slate-50 rounded-lg transition-colors text-slate-600"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={nextMonth}
+                      className="p-1 hover:bg-slate-50 rounded-lg transition-colors text-slate-600"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
                   </div>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-7 flex-grow auto-rows-fr">
-              {renderCalendar()}
-            </div>
-
-            {/* Songo Watermark */}
-            <div className="p-3 flex justify-end flex-none">
-              <span className="text-2xl font-black text-gray-400/40 font-serif tracking-tighter">
-                Songo
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right side: Controls and List */}
-        <div className="w-full xl:w-[35%] bg-white rounded-3xl shadow-xl border border-gray-100 p-5 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row xl:flex-col justify-between items-start sm:items-center xl:items-start gap-3 z-30">
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1 bg-white border border-gray-200 p-1 rounded-xl shadow-sm">
-                <button
-                  onClick={prevMonth}
-                  className="p-1 hover:bg-slate-50 rounded-lg transition-colors text-slate-600"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  onClick={nextMonth}
-                  className="p-1 hover:bg-slate-50 rounded-lg transition-colors text-slate-600"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-              <span className="text-base font-black text-blue-900 tracking-tighter">
-                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-              </span>
-            </div>
-
-            <div className="relative w-full sm:w-auto xl:w-full">
-              <button
-                onClick={() => setShowAgendarOptions(!showAgendarOptions)}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 tracking-widest"
-              >
-                <Plus size={18} /> Agendar
-              </button>
-              <AnimatePresence>
-                {showAgendarOptions && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute right-0 top-full mt-2 w-full bg-white rounded-2xl shadow-2xl z-[100] border border-gray-100 overflow-hidden origin-top-right"
-                  >
-                    {/* Período de Planificação (Acessível ao Chefe do DPEP e Técnico de Planificação) */}
-                    {canManagePeriod && (
-                      <button
-                        onClick={() => {
-                          setShowAgendarOptions(false);
-                          setShowPeriodoModal(true);
-                        }}
-                        className="w-full text-left px-4 py-3 bg-purple-50/80 hover:bg-purple-100 text-[11px] font-black text-purple-900 tracking-wider border-b border-purple-100 flex items-center justify-between"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <CalendarIcon size={14} className="text-purple-700" />
-                          Período de Planificação
-                        </span>
-                        <span
-                          className={`text-[9px] px-2 py-0.5 rounded-md font-extrabold ${
-                            periodoPlanificacao.status === "aberto"
-                              ? "bg-emerald-600 text-white"
-                              : "bg-red-600 text-white"
-                          }`}
-                        >
-                          {periodoPlanificacao.status === "aberto" ? "Aberto" : "Fechado"}
-                        </span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => {
-                        setShowAgendarOptions(false);
-                        onAgendar();
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-[11px] font-black text-blue-900 tracking-widest border-b border-gray-50"
-                    >
-                      Agendar Encontro
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAgendarOptions(false);
-                        setNewEvent({ ...newEvent, type: "Data Comemorativa" });
-                        setShowModal(true);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-[11px] font-black text-blue-900 tracking-widest border-b border-gray-50"
-                    >
-                      Data Comemorativa
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAgendarOptions(false);
-                        setNewEvent({ ...newEvent, type: "Feriado Nacional" });
-                        setShowModal(true);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-[11px] font-black text-blue-900 tracking-widest border-b border-gray-50"
-                    >
-                      Feriado Nacional
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAgendarOptions(false);
-                        setNewEvent({
-                          ...newEvent,
-                          type: "Feriado Institucional",
-                        });
-                        setShowModal(true);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-[11px] font-black text-blue-900 tracking-widest border-b border-gray-50"
-                    >
-                      Feriado Institucional
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAgendarOptions(false);
-                        onNota();
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-[11px] font-black text-blue-900 tracking-widest"
-                    >
-                      Nota do Dia
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Lista Directa de Eventos na Área */}
-          <div className="flex flex-col gap-3 pt-3 border-t border-slate-100 flex-1 overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">
-                  {selectedDate
-                    ? `Eventos em ${selectedDate.toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}`
-                    : `Eventos de ${monthNames[currentDate.getMonth()]}`}
-                </h4>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                  {filteredDisplayItems.length} registo(s) apresentado(s)
-                </p>
-              </div>
-
-              {selectedDate && (
-                <button
-                  onClick={() => setSelectedDate(null)}
-                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline"
-                >
-                  Ver Todo o Mês
-                </button>
-              )}
-            </div>
-
-            {/* Categorias de Filtro */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[10px] font-bold">
-              {[
-                { key: "todos", label: "Todos" },
-                { key: "reunioes", label: "Reuniões" },
-                { key: "feriados", label: "Feriados" },
-                { key: "notas", label: "Notas" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setEventFilter(tab.key as any)}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    eventFilter === tab.key
-                      ? "bg-blue-600 text-white shadow-sm font-black"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Pesquisa */}
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Pesquisar evento ou local..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-medium"
-              />
-            </div>
-
-            {/* Content List */}
-            <div className="max-h-[380px] xl:max-h-[460px] overflow-y-auto space-y-2.5 pr-1">
-              {filteredDisplayItems.length === 0 ? (
-                <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 my-2">
-                  <CalendarIcon size={26} className="mx-auto text-slate-300 mb-1.5" />
-                  <p className="text-xs font-bold text-slate-500">Nenhum evento nesta seleção.</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Utilize o botão "Agendar" para criar novos compromissos.</p>
+                  <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+                    {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                  </h2>
                 </div>
-              ) : (
-                filteredDisplayItems.map((item: any) => {
-                  const isNote = item.hasOwnProperty("content");
-                  const eventType = item.type || "Reunião";
+                <div className="text-sm font-bold text-slate-700 tracking-tight">
+                  Moçambique Estatística {currentDate.getFullYear()}
+                </div>
+              </div>
+
+              {/* Days of week header matching reference: Dom, Seg, Ter, Qua, Qui, Sex, Sáb */}
+              <div className="grid grid-cols-7 mb-2 text-center text-xs font-bold text-slate-500">
+                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day, index) => {
+                  const isTodayColumn =
+                    new Date().getDay() === index &&
+                    currentDate.getMonth() === new Date().getMonth() &&
+                    currentDate.getFullYear() === new Date().getFullYear();
 
                   return (
                     <div
-                      key={item.id || Math.random().toString()}
-                      className="p-3 bg-slate-50/80 hover:bg-slate-100/90 border border-slate-200/80 rounded-2xl transition-all flex flex-col gap-1.5 group relative shadow-sm"
+                      key={day}
+                      className={`py-1 text-xs font-black tracking-wider ${
+                        isTodayColumn ? "text-blue-700 font-extrabold" : "text-slate-500"
+                      }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 font-mono">
-                            {item.date ? item.date.split("-").reverse().join("/") : "Sem data"}
-                          </span>
-
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                            isNote
-                              ? "bg-amber-100 text-amber-800 border border-amber-200"
-                              : eventType === "Feriado Nacional"
-                              ? "bg-red-100 text-red-800 border border-red-200"
-                              : eventType === "Feriado Institucional"
-                              ? "bg-purple-100 text-purple-800 border border-purple-200"
-                              : eventType === "Data Comemorativa"
-                              ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
-                              : "bg-blue-100 text-blue-800 border border-blue-200"
-                          }`}>
-                            {isNote ? "Nota do Dia" : eventType}
-                          </span>
-                        </div>
-
-                        {!isNote && onDeleteEvent && !String(item.id).startsWith("feriado-") && (
-                          <button
-                            onClick={async () => {
-                              if (confirm(`Tem a certeza que deseja eliminar o evento "${item.title}"?`)) {
-                                await onDeleteEvent(item.id);
-                              }
-                            }}
-                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Eliminar Evento"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-
-                      <div>
-                        <h5 className="text-xs font-black text-slate-800 leading-snug">
-                          {item.title}
-                        </h5>
-                        {isNote && item.content && (
-                          <p className="text-[11px] text-slate-600 mt-1">{item.content}</p>
-                        )}
-                        {!isNote && item.agenda && (
-                          <p className="text-[11px] text-slate-600 mt-1">{item.agenda}</p>
-                        )}
-                      </div>
-
-                      {!isNote && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500 pt-1 border-t border-slate-200/60">
-                          {item.startTime && (
-                            <span className="flex items-center gap-1 text-slate-700">
-                              <Clock size={11} className="text-blue-600" />
-                              {item.startTime} {item.endTime ? `- ${item.endTime}` : ""}
-                            </span>
-                          )}
-                          {item.location && (
-                            <span className="flex items-center gap-1 text-slate-700">
-                              <MapPin size={11} className="text-red-500" />
-                              {item.location}
-                            </span>
-                          )}
-                          {item.preside && (
-                            <span className="flex items-center gap-1 text-slate-700">
-                              <Users size={11} className="text-purple-600" />
-                              Preside: {item.preside}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {day}
                     </div>
                   );
-                })
-              )}
+                })}
+              </div>
+
+              {/* Calendar Grid Boxes */}
+              <div className="grid grid-cols-7 gap-3">
+                {(() => {
+                  const year = currentDate.getFullYear();
+                  const month = currentDate.getMonth();
+                  const days = daysInMonth(year, month);
+                  const firstDay = firstDayOfMonth(year, month);
+                  const calendarCells = [];
+
+                  // Empty slots for previous month
+                  for (let i = 0; i < firstDay; i++) {
+                    calendarCells.push(
+                      <div
+                        key={`empty-${i}`}
+                        className="h-28 md:h-36 rounded-2xl border border-transparent bg-transparent"
+                      ></div>
+                    );
+                  }
+
+                  // Days of current month
+                  for (let day = 1; day <= days; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                    const isJune30 = month === 5 && day === 30 && year === 2026; // Highlight June 30 as in image
+                    const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+                    const dayEvents = allEvents.filter((e) => e.date === dateStr);
+
+                    calendarCells.push(
+                      <div
+                        key={day}
+                        onClick={() => {
+                          const d = new Date(year, month, day);
+                          setSelectedDate(d);
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            date: d.toISOString().split("T")[0],
+                          }));
+                          setShowModal(true);
+                        }}
+                        className={`h-28 md:h-36 rounded-2xl border p-3 flex flex-col justify-between transition-all cursor-pointer shadow-sm relative group ${
+                          isJune30
+                            ? "bg-red-50/70 border-red-400 shadow-md ring-1 ring-red-300"
+                            : isToday
+                            ? "bg-blue-50/50 border-blue-500 border-2"
+                            : "bg-white border-slate-200 hover:border-slate-400 hover:shadow-md"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center w-full">
+                          <span
+                            className={`text-sm md:text-base font-bold ${
+                              isJune30 ? "text-red-600 font-black" : "text-slate-800"
+                            }`}
+                          >
+                            {day}
+                          </span>
+                          {dayEvents.length > 0 && (
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" title={`${dayEvents.length} evento(s)`} />
+                          )}
+                        </div>
+
+                        {/* Event preview inside cell */}
+                        <div className="flex flex-col gap-1 overflow-y-auto max-h-[60px] text-[11px]">
+                          {dayEvents.slice(0, 3).map((ev) => (
+                            <div key={ev.id} className="bg-blue-50 text-blue-900 px-2 py-0.5 rounded font-semibold truncate">
+                              {ev.title}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Special badge for June 30 "Fim prazo" as in reference image */}
+                        {isJune30 && (
+                          <div className="mt-auto w-full bg-white/90 border border-red-200 rounded-lg py-1 text-center shadow-xs">
+                            <span className="text-[11px] font-black uppercase text-red-600 tracking-wider">
+                              Fim prazo
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return calendarCells;
+                })()}
+              </div>
+
+              {/* Footer Watermark */}
+              <div className="pt-6 mt-auto flex justify-end">
+                <span className="text-2xl font-black text-gray-300 font-serif tracking-tighter">
+                  Songo
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
     </div>
 
       {/* Modal de Agendamento */}
@@ -738,8 +401,11 @@ export default function CalendarView({
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-600 text-white">
-                <h3 className="text-xl font-bold">Agendar Novo Encontro</h3>
+              <div className="p-6 border-b border-blue-700 flex justify-between items-center bg-gradient-to-r from-blue-700 to-indigo-800 text-white">
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-wider">Agendar Nova Atividade</h3>
+                  <p className="text-xs text-blue-100 font-medium">Formulário completo de agendamento por período e tipo</p>
+                </div>
                 <button
                   onClick={() => setShowModal(false)}
                   className="p-2 hover:bg-white/20 rounded-full transition-colors"
@@ -748,113 +414,55 @@ export default function CalendarView({
                 </button>
               </div>
 
-              <form onSubmit={handleAddEvent} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Data
-                  </label>
-                  <input
-                    required
-                    type="date"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={newEvent.date}
-                    onChange={(e) =>
-                      setNewEvent({ ...newEvent, date: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Título da Atividade
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Ex: Reunião de Planejamento"
-                    value={newEvent.title}
-                    onChange={(e) =>
-                      setNewEvent({ ...newEvent, title: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Tipo de Encontro
-                    </label>
-                    <select
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={newEvent.type}
-                      onChange={(e) =>
-                        setNewEvent({
-                          ...newEvent,
-                          type: e.target.value as any,
-                        })
-                      }
-                    >
-                      <option value="Reunião">Reunião</option>
-                      <option value="Encontro">Encontro</option>
-                      <option value="Início e Fechamento de Atividade">
-                        Início e Fechamento de Atividade
-                      </option>
-                      <option value="Data Comemorativa">
-                        Data Comemorativa
-                      </option>
-                      <option value="Feriado Nacional">Feriado Nacional</option>
-                      <option value="Feriado Institucional">
-                        Feriado Institucional
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Local
-                    </label>
-                    <select
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={newEvent.location}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, location: e.target.value })
-                      }
-                    >
-                      <option value="">Selecione o Local</option>
-                      <option value="Sala de Reuniões">Sala de Reuniões</option>
-                      <option value="Cerqs">Cerqs</option>
-                      <option value="Sala de Aulas">Sala de Aulas</option>
-                      <option value="Auditório">Auditório</option>
-                      <option value="Lar de Estudantes">
-                        Lar de Estudantes
-                      </option>
-                    </select>
+              <form onSubmit={handleAddEvent} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                {/* Período da Atividade: Data Início e Data Fim */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                    1. Período Definido da Atividade
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Data de Início <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs font-medium"
+                        value={newEvent.date}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, date: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Data Final <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        min={newEvent.date || undefined}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs font-medium"
+                        value={newEvent.endDate || newEvent.date}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, endDate: e.target.value })
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Agenda
-                  </label>
-                  <textarea
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Descreva a agenda..."
-                    value={newEvent.agenda}
-                    onChange={(e) =>
-                      setNewEvent({ ...newEvent, agenda: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                {/* Horários Início e Fim */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Inicia às
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Hora de Início <span className="text-red-500">*</span>
                     </label>
                     <input
                       required
                       type="time"
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
                       value={newEvent.startTime}
                       onChange={(e) =>
                         setNewEvent({ ...newEvent, startTime: e.target.value })
@@ -862,13 +470,13 @@ export default function CalendarView({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Termina às
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Hora de Término <span className="text-red-500">*</span>
                     </label>
                     <input
                       required
                       type="time"
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
                       value={newEvent.endTime}
                       onChange={(e) =>
                         setNewEvent({ ...newEvent, endTime: e.target.value })
@@ -877,57 +485,162 @@ export default function CalendarView({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Participantes
-                  </label>
-                  {[
-                    "Membros de CR",
-                    "Membros de CAS",
-                    "Pessoal fora do Quadro",
-                    "Todos estudantes",
-                    "Todos estudantes Femininos",
-                    "Todos estudantes Masculinos",
-                  ].map((participant) => (
-                    <label
-                      key={participant}
-                      className="flex items-center gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={newEvent.participants.includes(participant)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewEvent({
-                              ...newEvent,
-                              participants: [
-                                ...newEvent.participants,
-                                participant,
-                              ],
-                            });
-                          } else {
-                            setNewEvent({
-                              ...newEvent,
-                              participants: newEvent.participants.filter(
-                                (p) => p !== participant,
-                              ),
-                            });
-                          }
-                        }}
-                      />
-                      <span className="text-sm text-gray-700">
-                        {participant}
-                      </span>
+                {/* Tipo de Atividade e Local */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Tipo de Atividade <span className="text-red-500">*</span>
                     </label>
-                  ))}
+                    <select
+                      required
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs font-bold"
+                      value={newEvent.type}
+                      onChange={(e) =>
+                        setNewEvent({
+                          ...newEvent,
+                          type: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="" disabled>-- Selecione o tipo de atividade --</option>
+                      <option value="Reunião">Reunião</option>
+                      <option value="Formação / Capacitação">Formação / Capacitação</option>
+                      <option value="Monitoria / Acompanhamento">Monitoria / Acompanhamento</option>
+                      <option value="Inspeção / Auditoria">Inspeção / Auditoria</option>
+                      <option value="Seminário / Workshop">Seminário / Workshop / Conferência</option>
+                      <option value="Trabalho de Campo">Trabalho de Campo / Missão</option>
+                      <option value="Evento Académico">Evento Académico / Cerimónia</option>
+                      <option value="Início e Fechamento de Atividade">Início e Fechamento de Atividade</option>
+                      <option value="Data Comemorativa">Data Comemorativa</option>
+                      <option value="Feriado Nacional">Feriado Nacional</option>
+                      <option value="Feriado Institucional">Feriado Institucional</option>
+                      <option value="Outra Atividade">Outra Atividade</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Local da Realização
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                      placeholder="Ex: Sala de Reuniões, Auditório..."
+                      value={newEvent.location}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, location: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
 
-                <div className="pt-4">
+                {/* Título da Atividade */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Título / Designação da Atividade <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs font-semibold"
+                    placeholder="Ex: Reunião de Planificação do 1º Semestre"
+                    value={newEvent.title}
+                    onChange={(e) =>
+                      setNewEvent({ ...newEvent, title: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Organizador / Setor Responsável */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Organizador / Setor Responsável
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                    placeholder="Ex: Direção Académica / DPEP / Repartição de RH"
+                    value={newEvent.organizador}
+                    onChange={(e) =>
+                      setNewEvent({ ...newEvent, organizador: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Agenda / Descrição do Trabalho a Realizar no Período */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Descrição & Agenda de Trabalhos do Período
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                    placeholder="Descreva detalhadamente a agenda, objetivos e metas a serem alcançadas neste período..."
+                    value={newEvent.agenda}
+                    onChange={(e) =>
+                      setNewEvent({ ...newEvent, agenda: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Público Alvo & Participantes */}
+                <div className="space-y-2 pt-1 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Público-Alvo & Participantes Convocados
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {[
+                      "Membros do Conselho de Direção (CD)",
+                      "Membros de CR",
+                      "Membros de CAS",
+                      "Corpo Docente",
+                      "Corpo Técnico Administrativo (CTA)",
+                      "Pessoal fora do Quadro",
+                      "Todos estudantes",
+                      "Estudantes Femininos",
+                      "Estudantes Masculinos",
+                    ].map((participant) => (
+                      <label
+                        key={participant}
+                        className="flex items-center gap-2 p-1.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          className="rounded text-blue-600 focus:ring-blue-500"
+                          checked={newEvent.participants.includes(participant)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewEvent({
+                                ...newEvent,
+                                participants: [
+                                  ...newEvent.participants,
+                                  participant,
+                                ],
+                              });
+                            } else {
+                              setNewEvent({
+                                ...newEvent,
+                                participants: newEvent.participants.filter(
+                                  (p) => p !== participant,
+                                ),
+                              });
+                            }
+                          }}
+                        />
+                        <span className="text-xs text-slate-700 font-medium">
+                          {participant}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3">
                   <button
                     type="submit"
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100"
+                    className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
                   >
-                    Submeter o Registo
+                    <Save size={16} /> Confirmar & Registar Agendamento
                   </button>
                 </div>
               </form>
@@ -1127,6 +840,23 @@ export default function CalendarView({
                       }`}
                     >
                       <Clock size={14} /> 2ª Fase (+5 Dias Final)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!periodoPlanificacao) return;
+                        if (!window.confirm("Tem certeza que deseja zerar todos os prazos e contadores de extensão (0 dias de extensão)?")) return;
+                        setIsSavingPeriodo(true);
+                        const res = await zerarTodosOsPrazos(currentUser);
+                        setSaveSuccessMsg(res.message);
+                        setTimeout(() => setSaveSuccessMsg(""), 4000);
+                        setIsSavingPeriodo(false);
+                      }}
+                      disabled={isSavingPeriodo}
+                      className="py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-sm border bg-slate-800 hover:bg-slate-900 text-white border-slate-900 col-span-1 sm:col-span-2"
+                    >
+                      <RotateCcw size={14} /> Zerar Todos os Prazos (0 Dias Extensão)
                     </button>
                   </div>
 

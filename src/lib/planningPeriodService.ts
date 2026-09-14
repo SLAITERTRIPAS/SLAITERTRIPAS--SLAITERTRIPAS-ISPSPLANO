@@ -446,6 +446,33 @@ export async function estenderPrazoPlanificacao(
 }
 
 /**
+ * Zera todos os prazos e contadores de extensão de prazo do sistema (0 dias de extensão).
+ */
+export async function zerarTodosOsPrazos(user?: any): Promise<{ success: boolean; message: string }> {
+  const year = new Date().getFullYear();
+  await savePeriodoPlanificacao(
+    {
+      extensaoFase1Usada: false,
+      extensaoFase2Usada: false,
+      diasExtensaoTotal: 0,
+      autoSubmetido: false,
+      dataInicioPlanificacao: `${year}-04-01`,
+      dataFimPlanificacao: `${year}-04-30`,
+      dataInicioRelatorioSemestral: `${year}-01-01`,
+      dataFimRelatorioSemestral: `${year}-03-31`,
+      status: "aberto",
+      statusRelatorio: "aberto",
+      observacoes: "Prazos zerados e redefinidos para o estado padrão.",
+    },
+    user
+  );
+  return {
+    success: true,
+    message: "Todos os prazos e extensões foram zerados com sucesso (0 dias de extensão de prazo).",
+  };
+}
+
+/**
  * Submissão automática após vencimento do prazo.
  * Quando o prazo expira, todas as atividades em rascunho / pendentes são submetidas automaticamente
  * seguindo a trajetória traçada no workflow.

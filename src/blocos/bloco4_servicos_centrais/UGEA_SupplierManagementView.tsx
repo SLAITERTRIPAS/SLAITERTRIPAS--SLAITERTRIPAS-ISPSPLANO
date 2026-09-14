@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Supplier } from "../../types";
+import { printElementById } from "../../lib/printUtils";
 import { firestoreService } from "../../lib/firestoreService";
 const UGEA_SupplierRegistrationForm = lazy(() => import("./UGEA_SupplierRegistrationForm"));
 
@@ -141,7 +142,7 @@ export default function UGEA_SupplierManagementView({
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => window.print()}
+            onClick={() => printElementById("ugea-suppliers-table-container", "Lista do Cadastro de Fornecedores - UGEA Songo", "landscape", "A4")}
             className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs transition-all"
           >
             <Printer size={16} /> Imprimir Lista
@@ -226,7 +227,7 @@ export default function UGEA_SupplierManagementView({
       </div>
 
       {/* Tabela de Fornecedores */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex-grow overflow-hidden flex flex-col">
+      <div id="ugea-suppliers-table-container" className="bg-white rounded-2xl border border-slate-200 shadow-sm flex-grow overflow-hidden flex flex-col">
         <div className="overflow-x-auto flex-grow">
           <table className="w-full text-left border-collapse">
             <thead>

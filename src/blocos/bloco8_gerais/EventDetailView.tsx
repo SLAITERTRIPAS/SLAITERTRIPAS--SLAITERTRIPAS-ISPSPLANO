@@ -95,13 +95,23 @@ export default function EventDetailView({
                     Novo
                   </div>
                 )}
-                <div className="flex justify-end mb-4">
-                  <div className="text-right flex gap-8">
-                    <p className="text-sm font-bold text-gray-900">
-                      {new Date(event.date).toLocaleDateString("pt-PT")}
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    {event.type && (
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-black uppercase tracking-wider">
+                        {event.type}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right flex gap-6 items-center">
+                    <p className="text-sm font-black text-slate-800">
+                      📅 {new Date(event.date + "T12:00:00").toLocaleDateString("pt-PT")}
+                      {event.endDate && event.endDate !== event.date && (
+                        <span> até {new Date(event.endDate + "T12:00:00").toLocaleDateString("pt-PT")}</span>
+                      )}
                     </p>
-                    <p className="text-sm font-bold text-gray-900">
-                      {event.location}
+                    <p className="text-sm font-bold text-slate-600">
+                      📍 {event.location || "Local a confirmar"}
                     </p>
                   </div>
                 </div>

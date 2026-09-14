@@ -48,7 +48,11 @@ export async function wipeAllTestData() {
     "patrimonio_itens",
     "system_backups",
     "attendance_logs",
-    "system_logs"
+    "system_logs",
+    "direcoes_organicas",
+    "estrutura_adicionais",
+    "orgaos_custom",
+    "direcoes_excluidas"
   ];
 
   console.log("🔥 Iniciando purga total e absoluta de dados de teste...");
@@ -301,6 +305,17 @@ function saveLocalData(collectionName: string, data: any[]) {
   }
 }
 
+function getInstituicaoId(): string {
+  try {
+    const stored = localStorage.getItem("sigep_logged_in_user") || localStorage.getItem("sigep_user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.instituicaoId || "Songo";
+    }
+  } catch (e) {}
+  return "Songo";
+}
+
 export async function addUserData(collectionName: string, data: object) {
   let user = auth.currentUser;
   if (!user) {
@@ -328,6 +343,7 @@ export async function addUserData(collectionName: string, data: object) {
   const userData = {
     ...cleanData,
     userId,
+    tenantId: getInstituicaoId(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
@@ -338,7 +354,7 @@ export async function addUserData(collectionName: string, data: object) {
     
     // Atualizar cache local
     const localList = getLocalData(collectionName);
-    localList.push({ ...cleanData, id: docRef.id, userId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    localList.push({ ...cleanData, id: docRef.id, userId, tenantId: getInstituicaoId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     saveLocalData(collectionName, localList);
     
     return docRef.id;
@@ -373,7 +389,7 @@ export async function addToCollection<T>(collectionName: string, data: T) {
   if (isLocalStorageFallbackActive()) {
     const localId = "local_" + Math.random().toString(36).substring(2, 11);
     const localList = getLocalData(collectionName);
-    localList.push({ ...cleanData, id: localId, userId, createdAt: now, updatedAt: now, pending_sync: true });
+    localList.push({ ...cleanData, id: localId, userId, tenantId: getInstituicaoId(), createdAt: now, updatedAt: now, pending_sync: true });
     saveLocalData(collectionName, localList);
     return localId;
   }
@@ -383,7 +399,7 @@ export async function addToCollection<T>(collectionName: string, data: T) {
     const docRef = await addDoc(collection(db, collectionName), {
       ...cleanData,
       userId,
-      tenantId: "Songo",
+      tenantId: getInstituicaoId(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       synced: true
@@ -393,7 +409,7 @@ export async function addToCollection<T>(collectionName: string, data: T) {
     
     // 2. Cache local apenas após confirmação
     const localList = getLocalData(collectionName);
-    localList.push({ ...cleanData, id: docRef.id, userId, createdAt: now, updatedAt: now });
+    localList.push({ ...cleanData, id: docRef.id, userId, tenantId: getInstituicaoId(), createdAt: now, updatedAt: now });
     saveLocalData(collectionName, localList);
     
     console.log(`✅ Registro adicionado ao servidor: ${collectionName}/${docRef.id}`);
@@ -417,7 +433,7 @@ export async function addToCollection<T>(collectionName: string, data: T) {
     // Fallback local garantido
     const localId = "local_pending_" + Math.random().toString(36).substring(2, 11);
     const localList = getLocalData(collectionName);
-    localList.push({ ...cleanData, id: localId, userId, createdAt: now, updatedAt: now, pending_sync: true });
+    localList.push({ ...cleanData, id: localId, userId, tenantId: getInstituicaoId(), createdAt: now, updatedAt: now, pending_sync: true });
     saveLocalData(collectionName, localList);
     
     return localId;
@@ -509,12 +525,30 @@ export async function getFromCollection<T>(
 ) {
   try {
     const colRef = collection(db, collectionName);
-    const q = orderField ? query(colRef, orderBy(orderField, "desc")) : colRef;
+    
+    // Filtro por tenantId (Instituição)
+    const instituicaoId = getInstituicaoId();
+    let q;
+    
+    // Se não for Admin Global (Master), filtra por tenantId
+    const isMaster = localStorage.getItem("sigep_logged_in_user")?.includes("slaitertripas@gmail.com") || false;
+    
+    if (!isMaster) {
+        q = orderField 
+            ? query(colRef, where("tenantId", "==", instituicaoId), orderBy(orderField, "desc")) 
+            : query(colRef, where("tenantId", "==", instituicaoId));
+    } else {
+        q = orderField ? query(colRef, orderBy(orderField, "desc")) : colRef;
+    }
+    
     const snapshot = await getDocs(q);
-    const remoteData = snapshot.docs.map((doc) => ({
-      ...doc.data(),
-      id: doc.id,
-    })) as (T & { id: string })[];
+    const remoteData = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        ...(typeof data === 'object' && data !== null ? data : {}),
+        id: doc.id,
+      };
+    }) as (T & { id: string })[];
 
     localStorage.removeItem("sigep_quota_exceeded");
 
@@ -1044,16 +1078,19 @@ export const ensureCloudDataInitialized = async () => {
         name: "SLAITER TRIPAS",
         nome: "SLAITER TRIPAS",
         designacao: "SLAITER TRIPAS",
-        role: "Administrador",
-        cargo: "proprietario e Administrador do Sistema",
-        funcao: "proprietario e Administrador do Sistema",
-        orgao: "proprietario",
-        unidade: "proprietario",
-        unidadeOrganica: "proprietario",
-        direcao: "proprietario",
-        departamento: "proprietario",
+        role: "Proprietário / Administrador Geral",
+        cargo: "Proprietário, Programador e Administrador Geral",
+        cargoChefia: "Nenhum (Administrador Geral)",
+        funcao: "Proprietário, Programador e Administrador Geral",
+        categoria: "Proprietário, Programador e Administrador Geral",
+        orgao: "Administração Geral do Sistema",
+        unidade: "Administração Geral do Sistema",
+        unidadeOrganica: "Administração Geral do Sistema",
+        direcao: "Administração Geral do Sistema",
+        departamento: "Administração Geral do Sistema",
         password: "231383ft",
-        status: "Ativo / proprietario",
+        status: "Ativo / Proprietário e Administrador Geral",
+        efetivo: false,
         mustChangePassword: false,
         isProgrammer: true,
         isOwner: true,
@@ -1149,8 +1186,14 @@ export const firestoreService = {
   produtosUnificados: createCollectionService<any>("produtos_unificados", null),
   password_reset_requests: createCollectionService<any>("password_reset_requests"),
   balancoConfig: createCollectionService<any>("balanco_config", null),
+  direcoes_organicas: createCollectionService<any>("direcoes_organicas"),
+  estrutura_adicionais: createCollectionService<any>("estrutura_adicionais"),
+  orgaos_custom: createCollectionService<any>("orgaos_custom"),
+  direcoes_excluidas: createCollectionService<any>("direcoes_excluidas"),
+  instituicoes: createCollectionService<any>("instituicoes"),
   resetUserPasswordToDefault,
   clearDepartmentActivities,
+  deleteDirectionAndCascade,
   drafts: {
     ...createCollectionService<any>("drafts"),
     getByUserAndForm: async (userId: string, formId: string) => {
@@ -1775,15 +1818,18 @@ export const firestoreService = {
         name: adminData.name || adminData.nome || "SLAITER TRIPAS",
         nome: adminData.nome || adminData.name || "SLAITER TRIPAS",
         designacao: adminData.designacao || adminData.nome || "SLAITER TRIPAS",
-        role: "Administrador",
-        cargo: adminData.cargo || "proprietario e Administrador do Sistema",
-        funcao: adminData.funcao || "proprietario e Administrador do Sistema",
-        orgao: adminData.orgao || "proprietario",
-        unidade: adminData.unidade || "proprietario",
-        unidadeOrganica: adminData.unidadeOrganica || "proprietario",
-        direcao: adminData.direcao || "proprietario",
-        departamento: adminData.departamento || "proprietario",
-        status: adminData.status || "Ativo / proprietario",
+        role: adminData.role || "Proprietário / Administrador Geral",
+        cargo: adminData.cargo || "Proprietário, Programador e Administrador Geral",
+        cargoChefia: adminData.cargoChefia || "Nenhum (Administrador Geral)",
+        funcao: adminData.funcao || "Proprietário, Programador e Administrador Geral",
+        categoria: adminData.categoria || "Proprietário, Programador e Administrador Geral",
+        orgao: adminData.orgao || "Administração Geral do Sistema",
+        unidade: adminData.unidade || "Administração Geral do Sistema",
+        unidadeOrganica: adminData.unidadeOrganica || "Administração Geral do Sistema",
+        direcao: adminData.direcao || "Administração Geral do Sistema",
+        departamento: adminData.departamento || "Administração Geral do Sistema",
+        status: adminData.status || "Ativo / Proprietário e Administrador Geral",
+        efetivo: false,
         mustChangePassword: false,
         isProgrammer: true,
         isOwner: true,
@@ -2578,6 +2624,170 @@ export async function clearDepartmentActivities(departmentName: string): Promise
     return { success: true, deletedCount };
   } catch (error: any) {
     console.error(`Erro ao limpar actividades do departamento ${departmentName}:`, error);
+    return { success: false, deletedCount: 0, error: error?.message };
+  }
+}
+
+/**
+ * Exclui uma direção e realiza a exclusão em cascata de todos os órgãos, departamentos,
+ * repartições, atividades, planos e colaboradores associados.
+ */
+export async function deleteDirectionAndCascade(
+  directionTitle: string,
+  isCustom: boolean,
+  id?: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+  try {
+    const normDir = String(directionTitle || "").trim().toUpperCase();
+    console.log(`Iniciando exclusão em cascata para a direção: ${directionTitle}`);
+
+    let deletedCount = 0;
+
+    // 1. Coletar departamentos estáticos da direção se aplicável
+    const staticDeptsMap: Record<string, string[]> = {
+      "GABINETE DO DIRETOR-GERAL": [
+        "Diretor-Geral",
+        "Departamento de Planificação Estudos e Projetos",
+        "Unidade Gestora e Executora de Aquisições",
+        "Departamento de Cooperação e Relações Exteriores",
+        "Departamento de Controlo Técnico e de Qualidade",
+        "Departamento Jurídico"
+      ],
+      "DIVISÃO DE ENGENHARIA": [
+        "Direção da Divisão de Engenharia",
+        "Departamento de Pesquisa e Extensão",
+        "Departamento de Engenharia Eletrotécnica",
+        "Departamento de Engenharia de Construção Civil",
+        "Departamento de Engenharia de Construção Mecânica",
+        "Departamento de Disciplinas Gerais",
+        "Departamento Técnico e de Apoio"
+      ],
+      "CENTRO DE INCUBAÇÃO DE EMPRESAS": [
+        "Departamento de práticas de geração de negócio e desenvolvimento empresarial (DPGNDE)",
+        "Departamento de consultoria, estudos, projetos e angariação de fundos (DCPAF)",
+        "Departamento de prospecção de oportunidade de negócio (DPONE)"
+      ],
+      "DICOSAFA": [
+        "Direção da DICOSAFA",
+        "Departamento de Recursos Humanos",
+        "Departamento de Finanças",
+        "Departamento de Património",
+        "Secretaria Geral",
+        "Departamento TIC",
+        "Departamento Lar de Estudantes",
+        "Departamento de Produção Alimentar"
+      ],
+      "DICOSSER": [
+        "Direção da DICOSSER",
+        "Departamento de Registo Académico",
+        "Departamento de Assuntos Estudantis",
+        "Departamento de Biblioteca"
+      ]
+    };
+
+    const targetDepts = new Set<string>();
+    // Adicionar departamentos estáticos
+    const staticDepts = staticDeptsMap[normDir] || [];
+    staticDepts.forEach(d => targetDepts.add(d.toUpperCase()));
+
+    // 2. Buscar e apagar departamentos adicionados dinamicamente em estrutura_adicionais
+    const adicionaisRef = collection(db, "estrutura_adicionais");
+    const adicionaisSnap = await getDocs(adicionaisRef);
+    if (!adicionaisSnap.empty) {
+      const batch = writeBatch(db);
+      let batchCount = 0;
+      adicionaisSnap.docs.forEach(docSnap => {
+        const data = docSnap.data();
+        const dirTitle = String(data.directionTitle || "").toUpperCase();
+        if (dirTitle === normDir) {
+          if (data.type === "departamento" && data.name) {
+            targetDepts.add(String(data.name).toUpperCase());
+          }
+          batch.delete(doc(db, "estrutura_adicionais", docSnap.id));
+          batchCount++;
+        }
+      });
+      if (batchCount > 0) {
+        await batch.commit();
+        deletedCount += batchCount;
+      }
+    }
+
+    // 3. Excluir a própria direção do Firestore
+    if (isCustom && id) {
+      // É uma direção personalizada, apagar de direcoes_organicas
+      await deleteDoc(doc(db, "direcoes_organicas", id));
+      deletedCount++;
+    } else {
+      // É uma direção estática, registar em direcoes_excluidas
+      const excluidasRef = collection(db, "direcoes_excluidas");
+      await addDoc(excluidasRef, {
+        title: directionTitle,
+        deletedAt: new Date().toISOString()
+      });
+      deletedCount++;
+    }
+
+    // 4. Apagar Atividades da matriz e atividades normais
+    const activityCollections = ["matrix_activities", "actividades", "plano_actividades"];
+    for (const colName of activityCollections) {
+      const colRef = collection(db, colName);
+      const snap = await getDocs(colRef);
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        let batchCount = 0;
+        snap.docs.forEach(docSnap => {
+          const data = docSnap.data() || {};
+          const actDir = String(data.direcao || data.direction || "").toUpperCase();
+          const actDept = String(data.departamento || data.department || "").toUpperCase();
+          const actSector = String(data.setor || data.reparticao || "").toUpperCase();
+
+          const matchesDirection = actDir === normDir || (normDir.includes(actDir) && actDir.length > 2);
+          const matchesDepartment = targetDepts.has(actDept) || targetDepts.has(actSector);
+
+          if (matchesDirection || matchesDepartment) {
+            batch.delete(doc(db, colName, docSnap.id));
+            batchCount++;
+          }
+        });
+
+        if (batchCount > 0) {
+          await batch.commit();
+          deletedCount += batchCount;
+        }
+      }
+    }
+
+    // 5. Apagar colaboradores da referida direção/departamento
+    const colabRef = collection(db, "colaboradores");
+    const colabSnap = await getDocs(colabRef);
+    if (!colabSnap.empty) {
+      const batch = writeBatch(db);
+      let batchCount = 0;
+      colabSnap.docs.forEach(docSnap => {
+        const data = docSnap.data() || {};
+        const colabDir = String(data.direcao || "").toUpperCase();
+        const colabDept = String(data.departamento || "").toUpperCase();
+        const colabArea = String(data.areaDeAfetacao || "").toUpperCase();
+
+        const matchesDirection = colabDir === normDir || (normDir.includes(colabDir) && colabDir.length > 2);
+        const matchesDepartment = targetDepts.has(colabDept) || targetDepts.has(colabArea);
+
+        if (matchesDirection || matchesDepartment) {
+          batch.delete(doc(db, "colaboradores", docSnap.id));
+          batchCount++;
+        }
+      });
+
+      if (batchCount > 0) {
+        await batch.commit();
+        deletedCount += batchCount;
+      }
+    }
+
+    return { success: true, deletedCount };
+  } catch (error: any) {
+    console.error(`Erro ao efetuar exclusão em cascata da direção ${directionTitle}:`, error);
     return { success: false, deletedCount: 0, error: error?.message };
   }
 }

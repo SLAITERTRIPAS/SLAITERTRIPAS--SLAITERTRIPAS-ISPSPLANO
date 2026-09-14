@@ -10,12 +10,20 @@ import {
   X,
   Save,
   Cloud,
+  Building,
+  Users,
+  Lock,
+  ShieldAlert,
+  LogIn,
+  ArrowRight
 } from "lucide-react";
 import { ProcessingCircle } from "../../components/ui/ProcessingCircle";
 import { ABBREVIATIONS } from "../../constants/abbreviations";
 import { firestoreService } from "../../lib/firestoreService";
 // @ts-ignore
 import html2pdf from "html2pdf.js";
+import { getProjetoTeoricoSections } from "../../data/projetoTeoricoData";
+import { getMonografiaSections } from "../../data/monografiaData";
 
 interface MonografiaViewProps {
   onBack: () => void;
@@ -46,30 +54,28 @@ export default function MonografiaView({
   const [lastUpdated, setLastUpdated] = useState<string>(
     new Date().toLocaleString("pt-PT"),
   );
+  const [activeType, setActiveType] = useState<"monografia" | "projeto_teorico">("monografia");
+  const [docId, setDocId] = useState("main_mono");
   const [isSaving, setIsSaving] = useState(false);
 
   const [authorName, setAuthorName] = useState("SLAITER TRIPAS");
   const [monoTitle, setMonoTitle] = useState(
-    "SIGEP: Sistema integrado de gestão de processos do Instituto Superior Politécnico de Songo",
+    "SIGEP: Sistema Integrado de Gestão de Processo do Instituto Superior Politécnico de Songo",
   );
   const [orientador, setOrientador] = useState("Eng. Robone");
-  const [dedicatoriaText, setDedicatoriaText] = useState(
-    "Dedicado à minha família no geral, pilares da minha formação, cujo amor, paciência e sacrifício pavimentaram o caminho para que este sonho se tornasse realidade.\n\nÀ minha amada esposa e filhos, pelo amparo constante, pelas palavras de incentivo nos momentos mais desafiadores e pela presença reconfortante ao longo de toda esta jornada académica.\n\nAos meus colegas e amigos de curso, pela partilha de conhecimentos, pelas longas noites de estudo e por tornarem esta caminhada inesquecível.\nAos meus amigos Luís Domingos Franque e Gerson Bernardo Chaibande, pelo incentivo e muito esforço de me instruir a começar a trabalhar muito cedo no projeto de final de curso.\n\nAo meu tutor Robone Carvalho, pela paciência e motivação que tem me dado até agora.",
-  );
-  const [agradecimentosText, setAgradecimentosText] = useState(
-    "Agradeço primeiramente a Deus pela sabedoria e força concedidas durante este percurso. Ao meu orientador, pelas orientações valiosas e paciência dedicada. À Universidade Púnguè – Extensão de Tete, pela oportunidade de formação académica. Ao Instituto Superior Politécnico de Songo, pela disponibilidade em ceder informações institucionais. Aos colegas de curso, pela partilha de conhecimentos e experiências. Por fim, à minha família, pelo incentivo constante e compreensão nos momentos de ausência.",
-  );
-  const [resumoText, setResumoText] = useState(
-    'A presente monografia aborda o desenvolvimento do SIGEP (Sistema integrado de gestão de processos) para o Instituto Superior Politécnico de Songo, instituição pública de ensino superior situada na Vila de Songo, Distrito de Cahora Bassa. O estudo analisa a estrutura organizacional do Songo, composta por órgãos de direcção e gestão, unidades orgânicas e unidade orgânica, bem como os sete cursos de engenharia oferecidos. O trabalho propõe uma solução informática integrada que automatiza processos completos de gestão académicos e administrativos, completando as limitações que o sistema atual SIGPro-Songo não permite, o SIGPro-Songo está voltado para a gestão estudantil financeira e aproveitamento pedagógico. A pesquisa fundamenta-se na análise documental, entrevistas com dirigentes e observação participante, resultando num modelo de sistema que integra gestão de estudantes, novos ingressos, matrículas e graduados, gestão documental, comunicação interna, gestão de correspondências e recursos humanos. O SIGEP visa melhorar a eficiência operacional, transparência institucional e experiência dos utilizadores, alinhando-se com o lema do Songo: "Uma escola superior de engenharia para o sector de energia".',
-  );
-  const [abstractText, setAbstractText] = useState(
-    'This monograph addresses the development of SIGEP (Integrated Process Management System) for the Instituto Superior Politécnico de Songo, a public higher education institution located in Songo Village, Cahora Bassa District. The study analyzes the organizational structure of Songo, composed of management bodies, organic units, and central services, as well as the seven engineering courses offered. The work proposes an integrated IT solution that automates academic, administrative, and financial processes, overcoming the limitations of the current SIGPro-Songo system. The research is based on document analysis, interviews with managers, and participant observation, resulting in a system model that integrates student management, enrollments, tuition fees, assessments, and human resources. SIGEP aims to improve operational efficiency, institutional transparency, and user experience, aligning with Songo\'s motto: "A higher engineering school for the energy sector".',
-  );
+  const [dedicatoriaText, setDedicatoriaText] = useState("Dedicado à minha família...");
+  const [agradecimentosText, setAgradecimentosText] = useState("Agradeço...");
+  const [resumoText, setResumoText] = useState("A presente monografia...");
+  const [abstractText, setAbstractText] = useState("This monograph...");
+
+  useEffect(() => {
+    setDocId(activeType === "monografia" ? "main_mono" : "main_projeto_teorico");
+  }, [activeType]);
 
   useEffect(() => {
     // Subscribe to monografia in real-time
     const unsubscribe = firestoreService.monografia.subscribe((data) => {
-      const doc = data.find((d) => d.id === "main_mono");
+      const doc = data.find((d) => d.id === docId);
       if (doc) {
         if (doc.authorName) setAuthorName(doc.authorName);
         if (doc.monoTitle) setMonoTitle(doc.monoTitle);
@@ -80,22 +86,23 @@ export default function MonografiaView({
         if (doc.resumoText) setResumoText(doc.resumoText);
         if (doc.abstractText) setAbstractText(doc.abstractText);
       } else {
-        // Fallback to localStorage for migration
-        const savedAuthor = localStorage.getItem("mono_authorName");
-        if (savedAuthor) setAuthorName(savedAuthor);
-        const savedTitle = localStorage.getItem("mono_title");
-        if (savedTitle) setMonoTitle(savedTitle);
-        // ... other fallbacks if needed, but the defaults are already in state
+        // Fallback to defaults
+        setAuthorName("SLAITER TRIPAS");
+        setMonoTitle("SIGEP: Sistema Integrado de Gestão de Processo");
+        setOrientador("Eng. Robone");
       }
     });
-
     return () => unsubscribe();
-  }, []);
+  }, [docId]);
+
+  const monografiaSections = React.useMemo(() => getMonografiaSections(
+    authorName, monoTitle, orientador, year, dedicatoriaText, agradecimentosText, resumoText, abstractText
+  ), [authorName, monoTitle, orientador, year, dedicatoriaText, agradecimentosText, resumoText, abstractText]);
 
   const handleSaveMono = async () => {
     setIsSaving(true);
     try {
-      await firestoreService.monografia.set("main_mono", {
+      await firestoreService.monografia.set(docId, {
         authorName,
         monoTitle,
         orientador,
@@ -106,27 +113,18 @@ export default function MonografiaView({
         updatedAt: new Date().toISOString(),
       });
 
-      // Update local storage too for redundancy
-      localStorage.setItem("mono_authorName", authorName);
-      localStorage.setItem("mono_title", monoTitle);
-      localStorage.setItem("mono_orientador", orientador);
-      localStorage.setItem("mono_dedicatoria_v3", dedicatoriaText);
-      localStorage.setItem("mono_agradecimentos", agradecimentosText);
-      localStorage.setItem("mono_resumo_v3", resumoText);
-      localStorage.setItem("mono_abstract", abstractText);
-
       setIsUpdated(true);
       setTimeout(() => setIsUpdated(false), 3000);
     } catch (err) {
-      console.error("Erro ao salvar monografia:", err);
-      alert("Erro ao salvar dados na base de dados central.");
+      console.error("Erro ao salvar dados:", err);
+      alert("Erro ao salvar.");
     } finally {
       setIsSaving(false);
     }
   };
 
   const systemSpecs = {
-    nome: "SIGEP Pro (Sistema Integrado de Gestão de Planificação)",
+    nome: "SIGEP Pro (Sistema Integrado de Gestão de Processo)",
     edicao: "Songo Educational Enterprise",
     versao: "2026.05.01-stable",
     tipo: "Arquitetura 64-bit Core (Web-Based)",
@@ -169,7 +167,7 @@ export default function MonografiaView({
       }));
   };
 
-  const generatedSections = [
+  const oldMonografiaSections = [
     // Page 1
     {
       id: "capa",
@@ -365,7 +363,7 @@ export default function MonografiaView({
               Role-Based Access Control (Controlo de Acesso Baseado em Papéis)
             </div>
             <div className="font-bold">SIGEP</div>
-            <div>Sistema Integrado de Gestão de Planificação</div>
+            <div>Sistema Integrado de Gestão de Processo</div>
             <div className="font-bold">SIGPro</div>
             <div>Sistema de Gestão de Planificação</div>
             <div className="font-bold">SO</div>
@@ -547,7 +545,7 @@ export default function MonografiaView({
           </p>
           <p>
             Neste contexto, o presente trabalho propõe o desenvolvimento do
-            SIGEP (Sistema Integrado de Gestão de Planificação), uma solução
+            SIGEP (Sistema Integrado de Gestão de Processo), uma solução
             informática abrangente que visa automatizar e integrar os processos
             completos de gestão académicos e administrativos do Songo, superando
             as lacunas identificadas no sistema actual.
@@ -1230,9 +1228,102 @@ export default function MonografiaView({
         </div>
       ),
     },
+    // Page 61: Fluxograma Multi-Institucional
+    {
+      id: "fluxograma-multiinst",
+      title: "Anexo II: Fluxograma Multi-Institucional",
+      content: (
+        <div className="space-y-6 font-serif text-justify p-4 md:p-8">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-blue-900 tracking-wider">ANEXO II: FLUXOGRAMA MULTI-INSTITUCIONAL</h3>
+            <p className="text-xs text-gray-500 font-sans uppercase tracking-widest mt-1">Arquitetura de Isolamento e Segurança do SIGEP</p>
+          </div>
+          
+          <p className="text-sm leading-relaxed mb-6">
+            O diagrama a seguir descreve visualmente a arquitetura lógica de isolamento de dados por inquilino (*Multi-Tenant Isolation*) integrada no SIGEP. Cada instituição registada (sendo o ISPS a pioneira e modelo base) usufrui de uma área estritamente privada, independente e intransmissível, salvaguardada por regras de segurança do Firestore que impedem de forma absoluta o vazamento de dados inter-institucionais.
+          </p>
+
+          {/* Fluxograma Interativo */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative font-sans my-8">
+            
+            {/* Step 1 */}
+            <div className="bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between group hover:-translate-y-1 duration-300">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform">
+                  <Building size={20} />
+                </div>
+                <h4 className="font-extrabold text-blue-950 text-xs uppercase tracking-wide">1. Registo de Instituição</h4>
+                <p className="text-[11px] text-gray-600 mt-2 leading-relaxed">
+                  O Administrador Global cria uma nova instituição no sistema. É gerado um ID único (<code className="bg-slate-100 px-1 py-0.5 rounded text-blue-700 font-bold">instituicaoId</code>).
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-blue-100 text-[10px] text-gray-400 font-mono">
+                subcoleções: colaboradores, dptos, setores
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between group hover:-translate-y-1 duration-300">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform">
+                  <Users size={20} />
+                </div>
+                <h4 className="font-extrabold text-emerald-950 text-xs uppercase tracking-wide">2. Vínculo de Colaborador</h4>
+                <p className="text-[11px] text-gray-600 mt-2 leading-relaxed">
+                  Cada colaborador é estritamente vinculado à sua instituição correspondente através do respetivo identificador de inquilino.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-emerald-100 text-[10px] text-gray-400 font-mono">
+                instituicoes/&#123;id&#125;/colaboradores/&#123;uid&#125;
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="bg-gradient-to-br from-amber-50 to-white border-2 border-amber-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between group hover:-translate-y-1 duration-300">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform">
+                  <LogIn size={20} />
+                </div>
+                <h4 className="font-extrabold text-amber-950 text-xs uppercase tracking-wide">3. Login & Validação</h4>
+                <p className="text-[11px] text-gray-600 mt-2 leading-relaxed">
+                  O Firebase Auth valida as credenciais. O Firestore verifica se a instituição associada existe, está ativa e autoriza apenas essa sessão.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-amber-100 text-[10px] text-gray-400 font-mono">
+                carrega apenas dados do tenant correspondente
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className="bg-gradient-to-br from-rose-50 to-white border-2 border-rose-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between group hover:-translate-y-1 duration-300">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform">
+                  <Lock size={20} />
+                </div>
+                <h4 className="font-extrabold text-rose-950 text-xs uppercase tracking-wide">4. Isolamento Absoluto</h4>
+                <p className="text-[11px] text-gray-600 mt-2 leading-relaxed">
+                  Nenhum colaborador consegue consultar ou interagir com dados fora da sua instituição. O sistema bloqueia vazamentos.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-rose-100 text-[10px] text-rose-600 font-extrabold flex items-center gap-1">
+                <ShieldAlert size={12} /> Regras do Firestore Ativas
+              </div>
+            </div>
+
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 font-sans mt-6">
+            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">🔒 Mecanismo de Garantia de Integridade de Dados</h4>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              O modelo de dados do SIGEP adota subcoleções aninhadas por instituição e filtros de consulta no Firestore para impor o isolamento ao nível da base de dados. Mesmo que as chamadas de API do cliente sejam adulteradas, as regras de segurança baseadas no atributo <code className="bg-slate-200/80 px-1 py-0.5 rounded text-blue-900 font-bold">request.auth.token.instituicaoId</code> rejeitam qualquer tentativa de acesso inter-institucional, conferindo segurança de nível empresarial a todo o sistema.
+            </p>
+          </div>
+        </div>
+      ),
+    },
   ];
 
-  const sections = generatedSections;
+  const sections = activeType === "monografia" ? monografiaSections : getProjetoTeoricoSections();
 
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -1329,6 +1420,20 @@ export default function MonografiaView({
 
       {/* Header Fixo */}
       <header className="bg-blue-900 text-white p-4 flex items-center justify-between shadow-lg z-20 print:hidden flex-none">
+        <div className="flex items-center gap-2 bg-blue-800 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveType("monografia")}
+            className={`px-3 py-1 rounded text-sm font-bold ${activeType === "monografia" ? "bg-white text-blue-900" : "text-blue-200"}`}
+          >
+            Monografia
+          </button>
+          <button
+            onClick={() => setActiveType("projeto_teorico")}
+            className={`px-3 py-1 rounded text-sm font-bold ${activeType === "projeto_teorico" ? "bg-white text-blue-900" : "text-blue-200"}`}
+          >
+            Projeto Teórico
+          </button>
+        </div>
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
@@ -1338,10 +1443,10 @@ export default function MonografiaView({
           </button>
           <div>
             <h2 className="text-lg font-bold tracking-widest">
-              Monografia - Songo
+              {activeType === "monografia" ? "Monografia" : "Projeto Teórico"} - Songo
             </h2>
             <p className="text-blue-200 text-[10px] font-medium tracking-tighter">
-              SIGEP (Sistema Integrado de Gestão de Planificação)
+              SIGEP (Sistema Integrado de Gestão de Processo)
             </p>
           </div>
         </div>

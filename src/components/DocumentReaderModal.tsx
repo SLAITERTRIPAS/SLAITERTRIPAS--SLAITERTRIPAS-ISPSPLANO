@@ -370,7 +370,7 @@ export default function DocumentReaderModal({
                           Instituto Superior Politécnico de Songo
                         </h1>
                         <p className="text-[11px] font-bold text-slate-600 tracking-widest">
-                          SIGEP • Sistema Integrado de Gestão Institucional
+                          SIGEP • Sistema Integrado de Gestão de Processo
                         </p>
                       </div>
                     </div>

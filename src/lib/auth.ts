@@ -38,8 +38,8 @@ export const canAccessArea = (
     }
   }
 
-  // Super Boss, Admin, etc can see everything (Institutional/Pai)
-  if (isSuperBossUser(user)) {
+  // Super Boss, Admin Geral e Administrador da Instituição podem ver tudo na sua alçada
+  if (isSuperBossUser(user) || isInstitutionalAdminUser(user)) {
     return true;
   }
 
@@ -692,18 +692,83 @@ export const getAuthorizedActivities = (activities: any[], user: any) => {
  */
 export const getUserWorkspace = (user: any) => {
   if (!user) return "";
-  if (user.areaDeAfetacao) return user.areaDeAfetacao;
+  if (isHRBossUser(user)) {
+    return "Repartição de Pessoal";
+  }
+  if (user.areaDeAfetacao && user.areaDeAfetacao !== "Nenhum" && user.areaDeAfetacao !== "-") {
+    return user.areaDeAfetacao;
+  }
   return (
-    user.setor || user.reparticao || user.departamento || user.direcao || ""
+    user.setor || user.sector || user.reparticao || user.departamento || user.direcao || user.unidade || ""
+  );
+};
+
+/**
+ * Checks if a user is an Institutional Administrator (Admin da Instituição).
+ */
+export const isInstitutionalAdminUser = (user: any) => {
+  if (!user) return false;
+  if (isSuperBossUser(user)) return false; // Administrador Geral tem escopo global
+  const role = String(user.role || "").toLowerCase();
+  const cargoChefia = String(user.cargoChefia || "").toLowerCase();
+  const cargo = String(user.cargo || "").toLowerCase();
+  
+  return (
+    user.isInstitutionalAdmin === true ||
+    cargoChefia.includes("administrador da instituição") ||
+    cargoChefia.includes("administrador de instituição") ||
+    cargoChefia.includes("admin da instituição") ||
+    cargo.includes("administrador da instituição") ||
+    cargo.includes("administrador de instituição") ||
+    role.includes("administrador da instituição") ||
+    role.includes("administrador de instituição") ||
+    role.includes("admin da instituição") ||
+    (Boolean(user.instituicaoId) && (role.includes("admin") || role === "administrador"))
+  );
+};
+
+/**
+ * Checks if a user is the Head of Personnel / HR (Chefe da Repartição de Pessoal).
+ */
+export const isHRBossUser = (user: any) => {
+  if (!user) return false;
+  const rep = String(user.reparticao || "").toLowerCase();
+  const dep = String(user.departamento || "").toLowerCase();
+  const title = String(user.title || "").toLowerCase();
+  const cargo = String(user.cargo || "").toLowerCase();
+  const cargoChefia = String(user.cargoChefia || "").toLowerCase();
+
+  return (
+    cargoChefia.includes("chefe de repartição de pessoal") ||
+    cargoChefia.includes("chefe da repartição de pessoal") ||
+    cargoChefia.includes("repartição de pessoal") ||
+    cargoChefia.includes("reparticao de pessoal") ||
+    cargo.includes("chefe de repartição de pessoal") ||
+    cargo.includes("chefe da repartição de pessoal") ||
+    rep.includes("pessoal") ||
+    title.includes("pessoal") ||
+    title.includes("repartição de pessoal") ||
+    (cargoChefia.includes("chefe") && (rep.includes("pessoal") || dep.includes("recursos humanos"))) ||
+    (cargo.includes("chefe") && (rep.includes("pessoal") || dep.includes("recursos humanos")))
   );
 };
 
 
 /**
  * Checks if a user is a boss (Director, Chief, etc.) based on their name/role.
+ * O Administrador Geral/Proprietário/Programador do Sistema não é chefe nem colaborador de nenhuma instituição.
  */
 export const isBossUser = (userName: string = "") => {
   const norm = n(userName);
+  if (
+    norm.includes("proprietario") ||
+    norm.includes("programador") ||
+    norm.includes("slaiter") ||
+    norm.includes("administradordosistema") ||
+    norm.includes("administradorgeral")
+  ) {
+    return false;
+  }
   return (
     norm.includes("chefe") ||
     norm.includes("diretor") ||
@@ -712,8 +777,6 @@ export const isBossUser = (userName: string = "") => {
     norm.includes("adjunto") ||
     norm.includes("secretaria") ||
     norm.includes("presidente") ||
-    norm.includes("proprietario") ||
-    norm.includes("administrador") ||
     norm.includes("responsavel") ||
     norm.includes("ugea") ||
     norm.includes("dpep")
@@ -790,8 +853,8 @@ export const isTechnicianUser = (user: any) => {
 export const determineUserRole = (user: any): string => {
   if (!user) return "Utilizador";
   
-  // Super administradores mantêm o seu papel
-  if (isSuperBossUser(user)) return "Admin";
+  // O Administrador Geral/Proprietário/Programador é o topo soberano do sistema (não é colaborador nem chefe de nenhuma IES)
+  if (isSuperBossUser(user)) return "Proprietário / Administrador Geral";
 
   const cargo = String(user.cargo || user.cargoChefia || user.title || "").toLowerCase();
   const departamento = String(user.departamento || "").toLowerCase();

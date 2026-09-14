@@ -2280,11 +2280,13 @@ export default function IndividualProcessForm({
                         SETORES[
                           formData.reparticao as keyof typeof SETORES
                         ] || []
-                      )?.map((s) => (
-                        <option key={s + "-" + Math.random()} value={s}>
-                          {s}
-                        </option>
-                      ))}
+                      )
+                        ?.filter((s) => s && s.toLowerCase() !== "único" && s.toLowerCase() !== "unico")
+                        .map((s, sIdx) => (
+                          <option key={`${s}-${sIdx}`} value={s}>
+                            {s}
+                          </option>
+                        ))}
                       {!SETORES[
                         formData.reparticao as keyof typeof SETORES
                       ] && (

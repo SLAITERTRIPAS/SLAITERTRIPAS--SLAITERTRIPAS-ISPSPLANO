@@ -36,14 +36,18 @@ import {
   Download,
   LayoutGrid,
   Sparkles,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { IntelligentDiagnosticsView } from "./IntelligentDiagnosticsView";
-const CalendarView = lazy(() => import("../bloco5_sistema/CalendarView"));
+import ManualInstrucoesView from "../bloco8_gerais/ManualInstrucoesView";
+import CalendarView from "../bloco5_sistema/CalendarView";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import * as XLSX from "xlsx";
-const MonografiaView = lazy(() => import("../bloco3_unidades_organicas/MonografiaView"));
-const ReportsView = lazy(() => import("../bloco7_relatorios/ReportsView"));
+import MonografiaView from "../bloco3_unidades_organicas/MonografiaView";
+import ProjetoCientificoView from "../bloco3_unidades_organicas/ProjetoCientificoView";
+import ReportsView from "../bloco7_relatorios/ReportsView";
 import UniversalRegistrationPicker from "./UniversalRegistrationPicker";
 import RegistarGraduadoForm from "../bloco8_gerais/RegistarGraduadoForm";
 import RegistarMateriaisBensForm from "../bloco8_gerais/RegistarMateriaisBensForm";
@@ -55,20 +59,20 @@ import RegistarFornecedorForm from "../bloco8_gerais/RegistarFornecedorForm";
 import { firestoreService } from "../../lib/firestoreService";
 import { EFETIVO_GERAL_DATA } from "../../constants/colaboradoresList";
 import MainHeader from "../bloco1_apresentacao/MainHeader";
-import { isSuperBossUser } from "../../lib/auth";
+import { isSuperBossUser, isInstitutionalAdminUser, isHRBossUser } from "../../lib/auth";
 import { checkIsSystemAdmin } from "../../lib/utils";
 import { ProcessingCircle } from "../../components/ui/ProcessingCircle";
 import { FUNCIONARIOS } from "../../constants/formOptions";
-const GestaoProdutosPrecosView = lazy(() => import("../bloco9_produtos_precos/GestaoProdutosPrecosView"));
+import GestaoProdutosPrecosView from "../bloco9_produtos_precos/GestaoProdutosPrecosView";
 import {
   DatabaseView,
   UserManagementView,
   RecentActivityLog,
   HistoricoChefiasView,
-} from "../bloco5_sistema/SistemaSubViews";
-import { isProgrammerData, filterDeleted } from "../bloco5_sistema/systemUtils";
-import { EstruturaExplorer } from "../bloco5_sistema/EstruturaExplorer";
-import CaixaMensagensView from "../bloco5_sistema/CaixaMensagensView";
+} from "./SistemaSubViews";
+import { isProgrammerData, filterDeleted } from "./systemUtils";
+import { EstruturaExplorer } from "./EstruturaExplorer";
+import CaixaMensagensView from "./CaixaMensagensView";
 
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { exportFullBackup, restoreFullBackup } from "../../lib/backupService";
@@ -91,6 +95,7 @@ export default function SistemaView({
   user,
   colaboradores = [],
   onShowAlert,
+  initialActiveItem,
 }: {
   onBack: () => void;
   onLogout: () => void;
@@ -107,6 +112,7 @@ export default function SistemaView({
   user?: any;
   colaboradores?: any[];
   onShowAlert?: (msg: string, type?: string) => void;
+  initialActiveItem?: string;
 }) {
   const showAlert = (msg: string, type: "success" | "error" | "info" = "success") => {
     if (onShowAlert) {
@@ -116,17 +122,39 @@ export default function SistemaView({
     }
   };
 
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState("Sobre o Sistema");
-  const [registrationFormType, setRegistrationFormType] = useState<string | null>(null);
-
-  const canManageUsers =
+  const isGlobalAdmin =
     isSuperBossUser(user) ||
+    user?.isOwner === true ||
+    user?.isProgrammer === true ||
+    String(user?.email || "").toLowerCase() === "slaitertripas@gmail.com" ||
     user?.role === "Administrador" ||
     user?.role === "Administrador do Sistema" ||
+    String(user?.role || "").toLowerCase().includes("admin") ||
     user?.cargoChefia === "Proprietário do sistema" ||
     user?.cargoChefia === "Administrador de sistema";
+
+  const isInstitutionalAdmin = isInstitutionalAdminUser(user);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeItem, setActiveItem] = useState(
+    initialActiveItem && initialActiveItem !== "Sistema"
+      ? initialActiveItem
+      : isInstitutionalAdmin
+      ? "Gestão das Instituições"
+      : "Sobre o Sistema"
+  );
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Parte Teórica"]);
+  const [registrationFormType, setRegistrationFormType] = useState<string | null>(null);
+  const [pendingInstituicaoId, setPendingInstituicaoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialActiveItem && initialActiveItem !== "Sistema") {
+      setActiveItem(initialActiveItem);
+    }
+  }, [initialActiveItem]);
+
+  const canManageUsers = isGlobalAdmin || isInstitutionalAdmin || user?.role === "Administrador";
 
   const handleFullReset = async () => {
     if (!isSuperBossUser(user)) {
@@ -537,6 +565,7 @@ export default function SistemaView({
   const currentDate = new Date().toLocaleDateString("pt-PT");
 
   const isHRBoss =
+    isHRBossUser(user) ||
     (user?.reparticao || "").toLowerCase().includes("pessoal") ||
     (user?.title || "").toLowerCase().includes("repartição de pessoal") ||
     (user?.cargoChefia || "")
@@ -550,35 +579,55 @@ export default function SistemaView({
     (user?.title || "").toLowerCase().includes("ugea") ||
     (user?.cargoChefia || "").toLowerCase().includes("ugea");
 
-  const menuItems = [
-    { title: "Diagnóstico & Autocura", icon: Sparkles, hidden: !canManageUsers },
+  const institutionalAdminMenuItems = [
+    { title: "Gestão das Instituições", icon: Building },
     { title: "Centro de Mensagens", icon: MessageSquare },
-    { title: "Sessões Ativas", icon: UserCheck, hidden: !canManageUsers },
-    { title: "Log de Actividade", icon: Clock },
-    { title: "Gestão de Utilizadores", icon: Users, hidden: !canManageUsers },
-    { title: "Gestão de Produtos e Preços", icon: Box, hidden: !(canManageUsers || isUGEAUser) },
     { title: "Histórico de Chefias", icon: Clock },
-    { title: "Atualização", icon: Zap, hidden: !canManageUsers },
+    { title: "Calendário", icon: Calendar },
+    { title: "Sessões Ativas", icon: UserCheck },
+    { title: "Log de Actividade", icon: Clock },
+    { title: "Gestão de Utilizadores", icon: Users },
+    { title: "Gestão de Produtos e Preços", icon: Box },
+    { title: "Backup", icon: HardDrive },
+    { title: "Limpar Base de Dados", icon: RefreshCw },
+    { title: "Configurações", icon: ShieldCheck },
+    { title: "Sobre o Sistema", icon: Info },
+  ];
+
+  const defaultMenuItems = [
+    { title: "Diagnóstico & Autocura", icon: Sparkles, hidden: !isSuperBossUser(user) },
+    { title: "Centro de Mensagens", icon: MessageSquare },
+    { title: "Sessões Ativas", icon: UserCheck, hidden: isGlobalAdmin ? false : !canManageUsers },
+    { title: "Log de Actividade", icon: Clock },
+    { title: "Gestão de Utilizadores", icon: Users, hidden: isGlobalAdmin ? false : !canManageUsers },
+    { title: "Gestão de Produtos e Preços", icon: Box, hidden: isGlobalAdmin ? false : !(canManageUsers || isUGEAUser) },
+    { title: "Histórico de Chefias", icon: Clock },
+    { title: "Atualização", icon: Zap, hidden: isGlobalAdmin ? false : !canManageUsers },
     {
       title: "Registar",
       icon: UserPlus,
-      hidden: !(canManageUsers || isHRBoss),
+      hidden: isGlobalAdmin ? false : !(canManageUsers || isHRBoss),
     },
-    { title: "Base de Dados", icon: Database, hidden: !canManageUsers },
-    { title: "Estrutura Orgânica", icon: Network },
+    { title: "Base de Dados", icon: Database, hidden: isGlobalAdmin ? false : !canManageUsers },
+    { title: "Estrutura Geral da Instituição", icon: Network },
+    { title: "Gestão das Instituições", icon: Building, hidden: !isGlobalAdmin },
     { title: "Relatórios", icon: FileText },
-    { title: "Monografia", icon: FileText },
-    { title: "Projeto Teórico", icon: BookOpen },
+    { title: "Parte Teórica", icon: BookOpen, type: "group" },
+    { title: "Monografia", icon: FileText, parent: "Parte Teórica" },
+    { title: "Projeto Teórico", icon: BookOpen, parent: "Parte Teórica" },
+    { title: "Projeto Científico", icon: FileText, parent: "Parte Teórica" },
     { title: "Calendário", icon: Calendar },
-    { title: "Backup", icon: HardDrive, hidden: !canManageUsers },
+    { title: "Backup", icon: HardDrive, hidden: isGlobalAdmin ? false : !canManageUsers },
     {
       title: "Limpar Base de Dados",
       icon: RefreshCw,
-      hidden: !(canManageUsers || isHRBoss),
+      hidden: isGlobalAdmin ? false : !(canManageUsers || isHRBoss),
     },
-    { title: "Configurações", icon: ShieldCheck, hidden: !canManageUsers },
+    { title: "Configurações", icon: ShieldCheck, hidden: isGlobalAdmin ? false : !canManageUsers },
     { title: "Sobre o Sistema", icon: Info },
   ];
+
+  const menuItems = isInstitutionalAdmin ? institutionalAdminMenuItems : defaultMenuItems;
 
   const tableData = [
     {
@@ -905,6 +954,66 @@ export default function SistemaView({
       case "Histórico de Chefias":
         return <HistoricoChefiasView />;
       case "Registar":
+        if (registrationFormType === "admin_instituicao") {
+          return (
+            <div className="max-w-5xl mx-auto pt-8">
+              <RegistarFuncionarioForm
+                user={user}
+                initialData={{ instituicaoId: pendingInstituicaoId }}
+                onCancel={() => setRegistrationFormType(null)}
+                onSubmit={async (finalData) => {
+                  try {
+                    // 1. Gravar/Atualizar dados do Colaborador como Administrador
+                    finalData.role = "Administrador";
+                    // Preservar cargoChefia original se existir, caso contrário definir como Administrador
+                    const adminTitle = "Administrador da Instituição";
+                    if (!finalData.cargoChefia || finalData.cargoChefia === "Nenhum") {
+                      finalData.cargoChefia = adminTitle;
+                    } else if (!finalData.cargoChefia.includes(adminTitle)) {
+                      finalData.cargoChefia = `${finalData.cargoChefia}, ${adminTitle}`;
+                    }
+                    finalData.instituicaoId = pendingInstituicaoId || finalData.instituicaoId;
+                    await firestoreService.colaboradores.update(finalData.id, finalData);
+
+                    // 2. Criar conta de utilizador com papel de Administrador
+                    if (finalData.email) {
+                      const userMail = finalData.email.toLowerCase().trim();
+                      const adminUserData = {
+                        id: finalData.id,
+                        name: finalData.nome,
+                        email: userMail,
+                        role: "Administrador",
+                        cargoChefia: "Administrador da Instituição",
+                        isInstitutionalAdmin: true,
+                        instituicaoId: finalData.instituicaoId,
+                        isOwner: false,
+                        nuit: finalData.nuit || "",
+                        bi: finalData.numeroBI || "",
+                        password: "123456",
+                        mustChangePassword: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                      };
+                      await firestoreService.users.set(finalData.id, adminUserData);
+                    }
+
+                    if (onShowAlert) {
+                      onShowAlert("Administrador da Instituição registado com sucesso!", "success");
+                    } else {
+                      alert("Administrador da Instituição registado com sucesso!");
+                    }
+                    setRegistrationFormType(null);
+                    setPendingInstituicaoId(null);
+                    setActiveItem("Gestão de Utilizadores");
+                  } catch (err: any) {
+                    console.error("Erro no registo de administrador:", err);
+                    alert("Erro ao gravar registo de administrador: " + (err?.message || String(err)));
+                  }
+                }}
+              />
+            </div>
+          );
+        }
         if (registrationFormType === "user") {
           return (
             <div className="max-w-5xl mx-auto pt-8">
@@ -944,10 +1053,20 @@ export default function SistemaView({
                         id: finalData.id,
                         name: finalData.nome,
                         email: userMail,
-                        role: "User",
+                        role: finalData.role || (finalData.tipo === "Docente" ? "Docente" : "CTA"),
                         isOwner: false,
                         nuit: finalData.nuit || "",
                         bi: finalData.numeroBI || "",
+                        instituicaoId: finalData.instituicaoId || user?.instituicaoId || "isps",
+                        direcao: finalData.direcao || "",
+                        departamento: finalData.departamento || "",
+                        reparticao: finalData.reparticao || "",
+                        sector: finalData.sector || "",
+                        setor: finalData.sector || "",
+                        areaDeAfetacao: finalData.areaDeAfetacao || "",
+                        status: "Afetado",
+                        cargo: finalData.cargo || "",
+                        cargoChefia: finalData.cargoChefia || "Nenhum",
                         password: "123456",
                         mustChangePassword: true,
                         createdAt: new Date().toISOString(),
@@ -1158,15 +1277,14 @@ export default function SistemaView({
                   <p>
                     O{" "}
                     <strong>
-                      SIGEP (Sistema Integrado de Gestão de Planificação)
+                      SIGEP (Sistema Integrado de Gestão de Processo)
                     </strong>{" "}
                     é uma solução tecnológica abrangente e inovadora
                     desenvolvida especificamente para o{" "}
                     <strong>
-                      Instituto Superior Politécnico de Songo
+                      {user?.instituicaoNome || "Instituto Superior Politécnico de Songo"}
                     </strong>
-                    . O Songo é uma instituição vocacionada para a formação de
-                    excelência em engenharia.
+                    . Esta é uma instituição de referência focada na excelência e inovação de processos.
                   </p>
                   <p>
                     O objetivo central do SIGEP é unificar, otimizar e
@@ -1182,10 +1300,9 @@ export default function SistemaView({
                   </p>
                   <p>
                     Com múltiplos módulos flexíveis e um modelo de controlo de
-                    acessos funcional, o SIGEP fortalece a transição digital do
-                    Songo, alinhando a instituição com padrões internacionais de
-                    gestão académica sustentável e em sintonia com os desafios
-                    do setor energético nacional e internacional.
+                    acessos funcional, o SIGEP fortalece a transição digital do{" "}
+                    {user?.instituicaoNome || "Songo"}, alinhando a instituição com padrões internacionais de
+                    gestão académica sustentável e em sintonia com os desafios e metas institucionais.
                   </p>
                 </div>
               </div>
@@ -1204,39 +1321,53 @@ export default function SistemaView({
                   </button>
                 </div>
                 <div className="space-y-4">
-                  {colaboradores
-                    .filter((c) => c.updatedAt)
-                    .sort(
-                      (a, b) =>
-                        new Date(b.updatedAt).getTime() -
-                        new Date(a.updatedAt).getTime(),
-                    )
+                  {(colaboradores || [])
+                    .filter((c) => c && c.updatedAt)
+                    .sort((a, b) => {
+                      const getMs = (d: any) => {
+                        if (!d) return 0;
+                        if (typeof d === "number") return d;
+                        if (typeof d === "string") return new Date(d).getTime() || 0;
+                        if (d?.seconds) return d.seconds * 1000;
+                        if (typeof d?.toDate === "function") return d.toDate().getTime() || 0;
+                        return 0;
+                      };
+                      return getMs(b.updatedAt) - getMs(a.updatedAt);
+                    })
                     .slice(0, 3)
-                    .map((activity, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100 group transition-all hover:bg-blue-50"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-[10px] font-black text-blue-600 shadow-sm shrink-0">
-                          {activity.updatedBy?.substring(0, 2).toUpperCase() ||
-                            "Sys"}
+                    .map((activity, idx) => {
+                      const formatDateStr = (d: any) => {
+                        if (!d) return "";
+                        if (typeof d === "string") return d;
+                        if (d?.seconds) return new Date(d.seconds * 1000).toLocaleString("pt-PT");
+                        if (typeof d?.toDate === "function") return d.toDate().toLocaleString("pt-PT");
+                        const dateObj = new Date(d);
+                        return isNaN(dateObj.getTime()) ? "" : dateObj.toLocaleString("pt-PT");
+                      };
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100 group transition-all hover:bg-blue-50"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-[10px] font-black text-blue-600 shadow-sm shrink-0">
+                            {activity.updatedBy?.substring(0, 2).toUpperCase() ||
+                              "Sys"}
+                          </div>
+                          <div className="flex-grow min-w-0">
+                            <p className="text-[11px] font-bold text-gray-900 truncate">
+                              {activity.updatedBy || "Utilizador"} atualizou{" "}
+                              <span className="text-blue-600">
+                                {activity.nome}
+                              </span>
+                            </p>
+                            <p className="text-[9px] text-gray-400 font-medium">
+                              {formatDateStr(activity.updatedAt)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-grow min-w-0">
-                          <p className="text-[11px] font-bold text-gray-900 truncate">
-                            {activity.updatedBy || "Utilizador"} atualizou{" "}
-                            <span className="text-blue-600">
-                              {activity.nome}
-                            </span>
-                          </p>
-                          <p className="text-[9px] text-gray-400 font-medium">
-                            {new Date(activity.updatedAt).toLocaleString(
-                              "pt-PT",
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  {colaboradores.filter((c) => c.updatedAt).length === 0 && (
+                      );
+                    })}
+                  {(colaboradores || []).filter((c) => c && c.updatedAt).length === 0 && (
                     <p className="text-[10px] text-gray-400 italic text-center py-4">
                       Sem actividade recente para mostrar.
                     </p>
@@ -1363,8 +1494,19 @@ export default function SistemaView({
             </div>
           </div>
         );
-      case "Estrutura Orgânica":
-        return <EstruturaExplorer />;
+      case "Estrutura Geral da Instituição":
+      case "Gestão das Instituições":
+        return (
+          <EstruturaExplorer
+            loggedUser={user}
+            initialTab={activeItem === "Estrutura Geral da Instituição" ? "estrutura" : "instituicoes"}
+            onRegistarAdmin={(instId) => {
+              setPendingInstituicaoId(instId);
+              setRegistrationFormType("admin_instituicao");
+              setActiveItem("Registar");
+            }}
+          />
+        );
       case "Relatórios":
         return (
           <ReportsView
@@ -1382,8 +1524,13 @@ export default function SistemaView({
         );
       case "Projeto Teórico":
         return (
-          <MonografiaView
-            title="Projeto Teórico"
+          <ManualInstrucoesView
+            onBack={() => setActiveItem("Sobre o Sistema")}
+          />
+        );
+      case "Projeto Científico":
+        return (
+          <ProjetoCientificoView
             onBack={() => setActiveItem("Sobre o Sistema")}
           />
         );
@@ -2054,28 +2201,71 @@ export default function SistemaView({
               {isSidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
             </button>
 
+            {/* Acesso ao Menu Geral da Instituição (Navegar por Todos os Setores) */}
+            <div className={`pt-4 pb-2 border-b border-white/10 ${isSidebarCollapsed ? "px-1" : "px-2"}`}>
+              <button
+                type="button"
+                onClick={onBack}
+                title="Aceder ao Menu Geral da Instituição para navegar por todos os setores"
+                className={`w-full flex items-center gap-3 py-3 px-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-blue-950 font-black text-xs transition-all shadow-md transform hover:scale-[1.02] cursor-pointer ${
+                  isSidebarCollapsed ? "justify-center px-1" : "justify-start"
+                }`}
+              >
+                <LayoutGrid size={20} className="shrink-0 text-blue-950" />
+                {!isSidebarCollapsed && (
+                  <div className="text-left leading-tight">
+                    <span className="block text-[11px] font-black tracking-wider uppercase">Menu Geral</span>
+                    <span className="block text-[9px] font-bold text-blue-900/80">Navegar pelos Setores</span>
+                  </div>
+                )}
+              </button>
+            </div>
+
             <div className="flex-grow overflow-y-auto py-8 space-y-[1px]">
               {menuItems
                 .filter((item) => !(item as any).hidden)
-                .map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      if (item.title === "Registar") {
-                        handleOpenRegistration(null);
-                      } else {
-                        setActiveItem(item.title);
-                      }
-                    }}
-                    title={item.title}
-                    className={`w-full flex items-center gap-4 py-4 rounded-2xl text-[11px] font-black tracking-widest transition-all ${
-                      isSidebarCollapsed ? "justify-center px-2" : "px-6"
-                    } ${activeItem === item.title ? "bg-white text-[#000066]" : "hover:bg-white/10"}`}
-                  >
-                    <item.icon size={18} className="shrink-0" />
-                    {!isSidebarCollapsed && <span>{item.title}</span>}
-                  </button>
-                ))}
+                .map((item, idx) => {
+                  if ((item as any).type === "group") {
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setExpandedGroups(prev => 
+                            prev.includes(item.title) 
+                              ? prev.filter(g => g !== item.title) 
+                              : [...prev, item.title]
+                          );
+                        }}
+                        className={`w-full flex items-center justify-between px-6 py-3 text-[10px] font-black text-blue-300 tracking-widest uppercase hover:bg-white/5 transition-all ${isSidebarCollapsed ? "hidden" : ""}`}
+                      >
+                        {item.title}
+                        {expandedGroups.includes(item.title) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    );
+                  }
+                  if ((item as any).parent && !expandedGroups.includes((item as any).parent)) {
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        if (item.title === "Registar") {
+                          handleOpenRegistration(null);
+                        } else {
+                          setActiveItem(item.title);
+                        }
+                      }}
+                      title={item.title}
+                      className={`w-full flex items-center gap-4 py-4 rounded-2xl text-[11px] font-black tracking-widest transition-all ${
+                        isSidebarCollapsed ? "justify-center px-2" : "px-6"
+                      } ${activeItem === item.title ? "bg-white text-[#000066]" : "hover:bg-white/10"} ${(item as any).parent ? "pl-12" : ""}`}
+                    >
+                      <item.icon size={18} className="shrink-0" />
+                      {!isSidebarCollapsed && <span>{item.title}</span>}
+                    </button>
+                  );
+                })}
             </div>
             <div className={`p-4 border-t border-white/10 ${isSidebarCollapsed ? "p-2" : "p-8"}`}>
               <button

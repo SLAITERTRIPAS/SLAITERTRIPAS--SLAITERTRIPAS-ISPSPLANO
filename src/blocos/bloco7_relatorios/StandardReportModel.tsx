@@ -1,8 +1,9 @@
 import { printElementById } from "../../lib/printUtils";
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
-import { FileText, Download, ArrowLeft, Printer } from "lucide-react";
+import { FileText, Download, ArrowLeft, Printer, Stamp, Sparkles } from "lucide-react";
 import { openPrintDocumentWindow } from "../../lib/printUtils";
+import { ReportStudioModal } from "../../components/ReportStudioModal";
 
 interface ReportSection {
   title: string;
@@ -62,6 +63,8 @@ export default function StandardReportModel({
   onBack,
   user,
 }: StandardReportModelProps) {
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+
   const handlePrint = () => {
     const reportElement = document.getElementById("standard-report-content");
     if (reportElement) {
@@ -207,15 +210,33 @@ export default function StandardReportModel({
         >
           <ArrowLeft size={20} /> Voltar
         </button>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsStudioOpen(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-6 py-3 rounded-xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <Stamp size={18} /> ESTÚDIO PROFISSIONAL (INTERATIVO)
+          </button>
           <button
             onClick={handlePrint}
             className="flex items-center gap-2 bg-blue-900 text-white px-8 py-3 rounded-xl font-black hover:bg-blue-800 transition-all shadow-xl hover:scale-105 active:scale-95"
           >
-            <Printer size={18} /> IMPRIMIR RELATÓRIO (A4)
+            <Printer size={18} /> IMPRIMIR RÁPIDO (A4)
           </button>
         </div>
       </div>
+
+      {/* Modal do Estúdio de Relatórios Interativo */}
+      <ReportStudioModal
+        isOpen={isStudioOpen}
+        onClose={() => setIsStudioOpen(false)}
+        title={title || "Relatório Institucional ISPSongo"}
+        subtitle={`Direção: ${direction} • Ano: ${year}`}
+        documentNumber={`REL-${direction.substring(0, 4)}-${year}`}
+        user={user}
+        department={user?.unidadeOrganica || "INSTITUTO SUPERIOR POLITÉCNICO DE SONGO"}
+        contentHtml={document.getElementById("standard-report-content")?.innerHTML || ""}
+      />
 
       {/* Report Pages Container */}
       <div id="standard-report-content" className="flex flex-col gap-12 print:gap-0 items-center pb-20">

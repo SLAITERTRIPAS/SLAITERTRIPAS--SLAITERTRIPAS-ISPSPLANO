@@ -55,6 +55,25 @@
   animation: rgb-color 3s linear infinite;
 }
 
+button,
+[role="button"],
+.btn {
+  text-transform: none !important;
+}
+
+body.app-maximized-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  overflow: auto !important;
+  background-color: #0b1222 !important;
+}
+
 .animate-gradient-xy {
   animation: gradient-x 3s ease infinite;
   background-size: 400% 400%;
@@ -177,6 +196,21 @@
     zoom: 0.65; /* Adjust scale to fit on selected sheet */
   }
 
+  body.sigep-printing-active > *:not(#sigep-print-mount) {
+    display: none !important;
+  }
+
+  #sigep-print-mount {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    color: black !important;
+    z-index: 999999 !important;
+  }
+
   /* 2. Hide all non-document UI elements */
   header.app-header,
   footer.app-footer,
@@ -278,7 +312,6 @@
   }
 
   /* 7. Handling multi-page sections and page breaks */
-  section,
   .page-section,
   .page-break-after-always,
   .break-after-page,
@@ -312,6 +345,48 @@
     animation: none !important;
     transition: none !important;
     transform: none !important;
+  }
+
+  /* 9. Force complete expansion of scroll containers, hidden tabs and tables */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-hidden,
+  [class*="max-h-"],
+  [class*="overflow-"] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  details,
+  .accordion-content,
+  .tab-pane,
+  .tab-content {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+    visibility: visible !important;
+  }
+
+  table {
+    table-layout: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tbody {
+    display: table-row-group !important;
   }
 
   /* 9. Handle hidden document views that should be visible on print */
@@ -621,5 +696,64 @@
   .full-width-mobile {
     width: 100% !important;
     max-width: 100% !important;
+  }
+}
+
+/* Regras de Impressão de Alta Fidelidade (A4 ABNT / Institucional) */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\:block {
+    display: block !important;
+  }
+  .print\:break-after-page,
+  .page-break-after\:always {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  .print\:break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  main,
+  article,
+  form,
+  fieldset,
+  #manual-instrucoes-print-area,
+  .monografia-container,
+  .monografia-page,
+  .a4-container,
+  .document-body,
+  [id*="print"] {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+  ::-webkit-scrollbar {
+    display: none !important;
   }
 }

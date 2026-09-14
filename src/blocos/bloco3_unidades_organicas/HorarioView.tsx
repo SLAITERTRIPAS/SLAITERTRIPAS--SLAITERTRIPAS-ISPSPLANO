@@ -164,11 +164,25 @@ export default function HorarioView({ title, user }: { title: string; user: any 
                   const key = `${pIdx}-${sIdx}-${dia}`;
                   
                   // Only assign if we have enough data
-                  if (disciplinas.length > 0 && activeSalas.length > 0) {
-                    const isVaga = Math.random() < 0.3; // Increased chance for realistic schedule
+                  if (disciplinas.length > 0) {
+                    const isVaga = Math.random() < 0.25; // Chance for realistic schedule
                     const disc = disciplinas[Math.floor(Math.random() * disciplinas.length)];
-                    const doc = activeDocentes.length > 0 ? activeDocentes[Math.floor(Math.random() * activeDocentes.length)] : null;
-                    const sala = activeSalas[Math.floor(Math.random() * activeSalas.length)];
+                    
+                    // Match assigned teacher (Docente) from database
+                    const assignedDoc = disc.docenteId 
+                      ? activeDocentes.find(d => d.id === disc.docenteId || d.nome === disc.docenteId) 
+                      : null;
+                    const doc = assignedDoc || (activeDocentes.length > 0 ? activeDocentes[Math.floor(Math.random() * activeDocentes.length)] : null);
+
+                    // Match assigned physical space (Sala, Laboratório, Oficina, Auditório) from database
+                    const assignedSala = activeSalas.find(s => 
+                      (disc.salaNo && s.name.toLowerCase().includes(disc.salaNo.toLowerCase())) ||
+                      (disc.salaNo && s.id?.toLowerCase() === disc.salaNo.toLowerCase())
+                    ) || (activeSalas.length > 0 ? activeSalas[Math.floor(Math.random() * activeSalas.length)] : null);
+
+                    const salaName = assignedSala ? assignedSala.name : (disc.salaNo ? `${disc.piso || "Rés do Chão"} - Sala ${disc.salaNo}` : "Sala Comum");
+                    const salaType = assignedSala ? assignedSala.type : "Sala de Aula";
+                    const isComum = assignedSala ? assignedSala.isComum : false;
 
                     if (isVaga) {
                       assignments[key] = {
@@ -176,9 +190,9 @@ export default function HorarioView({ title, user }: { title: string; user: any 
                         disciplina: "SALA VAGA",
                         codigo: "-",
                         docente: "Disponível",
-                        sala: sala.name,
-                        tipoSala: sala.type,
-                        isComum: sala.isComum,
+                        sala: salaName,
+                        tipoSala: salaType,
+                        isComum: isComum,
                         turma: viewType === "TURMA" ? entityName : (activeTurmas[0] || "-"),
                         curso: title,
                         nivel: entityName,
@@ -189,9 +203,9 @@ export default function HorarioView({ title, user }: { title: string; user: any 
                         disciplina: disc.nome,
                         codigo: disc.codigo,
                         docente: doc ? doc.nome : "Docente a designar",
-                        sala: sala.name,
-                        tipoSala: sala.type,
-                        isComum: sala.isComum,
+                        sala: salaName,
+                        tipoSala: salaType,
+                        isComum: isComum,
                         turma: viewType === "TURMA" ? entityName : (activeTurmas[0] || "-"),
                         curso: title,
                         nivel: entityName,

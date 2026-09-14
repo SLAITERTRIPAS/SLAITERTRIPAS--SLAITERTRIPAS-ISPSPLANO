@@ -661,6 +661,10 @@ export const databaseMaintenance = {
       "planos_ferias",
       "guias_marcha",
       "guias_apresentacao",
+      "direcoes_organicas",
+      "estrutura_adicionais",
+      "orgaos_custom",
+      "direcoes_excluidas",
     ];
 
     const results = await Promise.all(

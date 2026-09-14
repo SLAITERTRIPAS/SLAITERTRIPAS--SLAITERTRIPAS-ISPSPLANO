@@ -165,11 +165,16 @@ export function openPrintDocumentWindow(options: PrintDocumentOptions) {
   const resolvedPageSize = detected.pageSize;
   const resolvedOrientation = detected.orientation;
 
-  const printWindow = window.open(
-    "",
-    "_blank",
-    "width=1280,height=920,scrollbars=yes,resizable=yes",
-  );
+  let printWindow: Window | null = null;
+  try {
+    printWindow = window.open(
+      "",
+      "_blank",
+      "width=1280,height=920,scrollbars=yes,resizable=yes",
+    );
+  } catch {
+    printWindow = null;
+  }
 
   const hasEmbeddedHeader =
     contentHtml.includes("REPÚBLICA DE MOÇAMBIQUE") ||
@@ -488,6 +493,11 @@ export function openPrintDocumentWindow(options: PrintDocumentOptions) {
             <button id="btn-zoom-70" onclick="applyZoom('0.70')" class="btn-format">70%</button>
           </div>
         </div>
+
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #1e293b; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #3b82f6;">
+          <span>💡</span>
+          <span><strong>Dica para Papel A4 / PDF:</strong> Para um resultado perfeito em papel A4, configure as Margens da impressora como <strong>"Nenhuma"</strong> (ou "Padrão") e certifique-se de ativar a opção <strong>"Gráficos de segundo plano"</strong> nas definições de impressão do seu navegador.</span>
+        </div>
       </div>
 
       <div class="a4-container" id="print-container" ${printType ? `data-print-type="${printType}"` : ""}>
@@ -567,13 +577,180 @@ export function openPrintDocumentWindow(options: PrintDocumentOptions) {
     </html>
   `;
 
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(docHtml);
-    printWindow.document.close();
-    printWindow.focus();
+  if (printWindow && !printWindow.closed && typeof printWindow.document !== "undefined") {
+    try {
+      printWindow.document.open();
+      printWindow.document.write(docHtml);
+      printWindow.document.close();
+      printWindow.focus();
+    } catch (err) {
+      console.warn("Writing to popup print window failed, using iframe fallback:", err);
+      printViaIframe(docHtml);
+    }
   } else {
-    window.print();
+    printViaIframe(docHtml);
+  }
+}
+
+/**
+  * Método de Impressão via IFrame Oculto
+  * Garante que a impressão funciona perfeitamente mesmo quando o bloqueador de popups do navegador está ativo.
+  */
+export function printViaIframe(docHtml: string): void {
+  try {
+    let iframe = document.getElementById("sigep-print-iframe") as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "sigep-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0px";
+      iframe.style.height = "0px";
+      iframe.style.border = "none";
+      iframe.style.visibility = "hidden";
+      iframe.style.zIndex = "-9999";
+      document.body.appendChild(iframe);
+    }
+
+    const iframeWin = iframe.contentWindow;
+    const iframeDoc = iframeWin?.document || iframe.contentDocument;
+
+    if (!iframeDoc || !iframeWin) {
+      printViaMountDiv(docHtml);
+      return;
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(docHtml);
+    iframeDoc.close();
+
+    // Aguardar tempo de renderização CSS e recursos
+    setTimeout(() => {
+      try {
+        iframeWin.focus();
+        iframeWin.print();
+      } catch (err) {
+        console.warn("Falha ao invocar print() no iframe, acionando fallback de container:", err);
+        printViaMountDiv(docHtml);
+      }
+    }, 450);
+  } catch (err) {
+    console.warn("Exceção em printViaIframe, acionando printViaMountDiv:", err);
+    printViaMountDiv(docHtml);
+  }
+}
+
+/**
+  * Método de Impressão por Injeção de Container na Página Principal (Tier 3)
+  * Utilizado caso a sandboxing do iframe proíba chamadas ao diálogo de impressão.
+  */
+export function printViaMountDiv(docHtml: string): void {
+  try {
+    let mount = document.getElementById("sigep-print-mount");
+    if (!mount) {
+      mount = document.createElement("div");
+      mount.id = "sigep-print-mount";
+      document.body.appendChild(mount);
+    }
+    mount.innerHTML = docHtml;
+    document.body.classList.add("sigep-printing-active");
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove("sigep-printing-active");
+      }, 1000);
+    }, 300);
+  } catch (err) {
+    console.error("Erro crítico na impressão:", err);
+  }
+}
+
+/**
+ * Extrai todo o conteúdo de um elemento DOM mantendo todos os dados inseridos,
+ * selecionados em dropdowns, opções marcadas e expandindo áreas colapsadas/scrolláveis.
+ */
+export function extractFullPrintableHtml(sourceEl: HTMLElement): string {
+  try {
+    const clone = sourceEl.cloneNode(true) as HTMLElement;
+
+    // Sincronizar os valores reais do DOM ativo para a cópia clonada antes de exportar
+    const sourceControls = sourceEl.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input, select, textarea"
+    );
+    const cloneControls = clone.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input, select, textarea"
+    );
+
+    sourceControls.forEach((sEl, i) => {
+      const cEl = cloneControls[i];
+      if (!cEl) return;
+
+      if (sEl.tagName === "SELECT") {
+        const select = sEl as HTMLSelectElement;
+        const selectedOption = select.options[select.selectedIndex];
+        const textVal = selectedOption ? selectedOption.text : select.value || "";
+        const span = document.createElement("span");
+        span.className = "print-val font-semibold text-slate-900 border-b border-slate-300 px-1.5 py-0.5 inline-block min-w-[60px]";
+        span.textContent = textVal || "—";
+        cEl.replaceWith(span);
+      } else if (sEl.tagName === "TEXTAREA") {
+        const textarea = sEl as HTMLTextAreaElement;
+        const val = textarea.value || textarea.textContent || "";
+        const div = document.createElement("div");
+        div.className = "print-val font-medium text-slate-900 bg-slate-50/80 p-2 border border-slate-300 rounded whitespace-pre-wrap my-1";
+        div.textContent = val || "—";
+        cEl.replaceWith(div);
+      } else if (sEl.tagName === "INPUT") {
+        const input = sEl as HTMLInputElement;
+        const type = (input.type || "text").toLowerCase();
+
+        if (type === "checkbox" || type === "radio") {
+          const span = document.createElement("span");
+          span.className = "print-checkbox font-bold px-1 text-slate-900";
+          span.textContent = input.checked ? "[ X ]" : "[   ]";
+          cEl.replaceWith(span);
+        } else if (type === "hidden" || type === "button" || type === "submit") {
+          cEl.remove();
+        } else {
+          const val = input.value || input.getAttribute("value") || "";
+          const span = document.createElement("span");
+          span.className = "print-val font-semibold text-slate-900 border-b border-slate-300 px-1.5 py-0.5 inline-block min-w-[60px]";
+          span.textContent = val || "—";
+          cEl.replaceWith(span);
+        }
+      }
+    });
+
+    // Expandir elementos colapsados, abas ocultas e sanfonas de detalhes
+    const collapsedOrHidden = clone.querySelectorAll<HTMLElement>(
+      ".hidden, .collapse, [class*='max-h-'], details"
+    );
+    collapsedOrHidden.forEach((el) => {
+      if (el.classList.contains("no-print") || el.classList.contains("print:hidden")) {
+        return;
+      }
+      el.classList.remove("hidden", "collapse");
+      if (el.tagName === "DETAILS") {
+        el.setAttribute("open", "true");
+      }
+      el.style.display = "block";
+      el.style.maxHeight = "none";
+      el.style.overflow = "visible";
+      el.style.height = "auto";
+    });
+
+    // Remover apenas botões e ações de interface
+    const actionButtons = clone.querySelectorAll<HTMLElement>(
+      "button, .no-print, .print\\:hidden, .fixed-action-btn, [title*='Editar'], [title*='Eliminar']"
+    );
+    actionButtons.forEach((btn) => btn.remove());
+
+    return sanitizeHtmlForPrinting(clone.innerHTML);
+  } catch (err) {
+    console.warn("Erro em extractFullPrintableHtml, recorrendo a innerHTML básico:", err);
+    return sanitizeHtmlForPrinting(sourceEl.innerHTML);
   }
 }
 
@@ -583,37 +760,67 @@ export function sanitizeHtmlForPrinting(rawHtml: string): string {
     const parser = new DOMParser();
     const doc = parser.parseFromString(`<div>${rawHtml}</div>`, "text/html");
 
-    // Remove elementos de controle de interface, botões, checkboxes e menus
-    
-    // Limpar estilos de dark mode que atrapalham a impressão de documentos
-    const allElements = doc.querySelectorAll('*');
-    allElements.forEach(el => {
-      let cls = el.getAttribute('class');
-      if (cls) {
-        // Remover classes de background dark, text-slate-100, etc.
-        cls = cls.replace(/bg-slate-[89]00\/?\d*/g, 'bg-white');
-        cls = cls.replace(/bg-[#\w]+\/?\d*/g, 'bg-white');
-        cls = cls.replace(/text-slate-[123]00/g, 'text-slate-900');
-        cls = cls.replace(/text-white/g, 'text-slate-900');
-        cls = cls.replace(/border-slate-[789]00\/?\d*/g, 'border-slate-300');
-        cls = cls.replace(/bg-transparent/g, 'bg-white');
-        el.setAttribute('class', cls);
+    // Processar formulários ou selects remanescentes em templates HTML estáticos
+    const selects = doc.querySelectorAll("select");
+    selects.forEach((sel) => {
+      const selected = sel.querySelector("option[selected]") || sel.querySelector("option");
+      const val = selected ? selected.textContent : sel.value || "—";
+      const span = doc.createElement("span");
+      span.className = "font-semibold text-slate-900 border-b border-slate-300 px-1.5 inline-block";
+      span.textContent = val || "—";
+      sel.replaceWith(span);
+    });
+
+    const inputs = doc.querySelectorAll("input");
+    inputs.forEach((inp) => {
+      const type = (inp.type || "text").toLowerCase();
+      if (type === "checkbox" || type === "radio") {
+        const span = doc.createElement("span");
+        span.className = "font-bold px-1 text-slate-900";
+        span.textContent = inp.hasAttribute("checked") ? "[ X ]" : "[   ]";
+        inp.replaceWith(span);
+      } else if (type !== "hidden") {
+        const val = inp.getAttribute("value") || inp.value || "—";
+        const span = doc.createElement("span");
+        span.className = "font-semibold text-slate-900 border-b border-slate-300 px-1.5 inline-block";
+        span.textContent = val;
+        inp.replaceWith(span);
+      } else {
+        inp.remove();
       }
     });
 
+    const textareas = doc.querySelectorAll("textarea");
+    textareas.forEach((ta) => {
+      const val = ta.textContent || ta.value || "—";
+      const div = doc.createElement("div");
+      div.className = "font-medium text-slate-900 bg-slate-50 p-2 border border-slate-300 rounded whitespace-pre-wrap my-1";
+      div.textContent = val;
+      ta.replaceWith(div);
+    });
+
+    // Limpar estilos de dark mode preservando toda a estrutura de dados
+    const allElements = doc.querySelectorAll("*");
+    allElements.forEach((el) => {
+      let cls = el.getAttribute("class");
+      if (cls) {
+        cls = cls.replace(/bg-slate-[89]00\/?\d*/g, "bg-white");
+        cls = cls.replace(/text-slate-[123]00/g, "text-slate-900");
+        cls = cls.replace(/text-white/g, "text-slate-900");
+        cls = cls.replace(/border-slate-[789]00\/?\d*/g, "border-slate-300");
+        cls = cls.replace(/max-h-\[\d+vh\]/g, "max-h-none");
+        cls = cls.replace(/overflow-y-auto/g, "overflow-visible");
+        el.setAttribute("class", cls);
+      }
+    });
+
+    // Remover APENAS botões e elementos explicitamente marcados como no-print
     const toRemove = doc.querySelectorAll(
-      "button, input[type='checkbox'], input[type='radio'], select, .no-print, .print\\:hidden, [title*='Editar'], [title*='Eliminar'], [title*='Visualizar'], [title*='Clique para selecionar']"
+      "button, .no-print, .print\\:hidden, [title*='Editar'], [title*='Eliminar']"
     );
     toRemove.forEach((el) => el.remove());
 
-    // Remove colunas e células de checkbox ou de ações
-    const thCheckboxes = doc.querySelectorAll("th.w-8, th:first-child input");
-    thCheckboxes.forEach((th) => th.closest("th")?.remove());
-
-    const tdCheckboxes = doc.querySelectorAll("td.w-8, td:first-child input");
-    tdCheckboxes.forEach((td) => td.closest("td")?.remove());
-
-    // Remove classes fixas de largura excessiva
+    // Remover classes fixas de largura excessiva mantendo largura fluida para papel
     const remainingElements = doc.querySelectorAll("*");
     remainingElements.forEach((el) => {
       if (el.className && typeof el.className === "string") {
@@ -637,13 +844,20 @@ export function printElementById(
   orientation: "portrait" | "landscape" | "auto" = "auto",
   pageSize?: "A3" | "A4" | "A5" | "auto",
 ) {
-  const el = document.getElementById(elementId);
+  let el = document.getElementById(elementId);
+  if (!el) {
+    el = document.querySelector("#print-area") ||
+         document.querySelector(".a4-container") ||
+         document.querySelector("[id*='print']") ||
+         document.querySelector("main");
+  }
+
   if (!el) {
     window.print();
     return;
   }
 
-  const cleanContent = sanitizeHtmlForPrinting(el.innerHTML);
+  const cleanContent = extractFullPrintableHtml(el);
 
   openPrintDocumentWindow({
     title,

@@ -119,7 +119,7 @@ import {
   getNextProcessSequence,
   hasChefiaPosition,
 } from "../../lib/utils";
-import { isSuperBossUser, getRoles } from "../../lib/auth";
+import { isSuperBossUser, isHRBossUser, getRoles } from "../../lib/auth";
 import * as Types from "../../types";
 import { EFETIVO_GERAL_DATA } from "../../constants/colaboradoresList";
 import {
@@ -281,20 +281,21 @@ export default function GestaoPessoalView({
     user?.cargoChefia !== "Nenhum" &&
     user?.estadoMandato !== "Cessado";
   const isHRBossGlobally =
-    isBossGlobally &&
-    ((user?.reparticao || "").toLowerCase().includes("pessoal") ||
-      (user?.reparticao || "").toLowerCase().includes("recursos humanos") ||
-      (user?.departamento || "").toLowerCase().includes("recursos humanos") ||
-      (user?.direcao || "").toLowerCase().includes("recursos humanos") ||
-      (user?.cargoChefia || "").toLowerCase().includes("rh") ||
-      (user?.title || "").toLowerCase().includes("rh") ||
-      (user?.title || "").toLowerCase().includes("repartição de pessoal") ||
-      (user?.reparticao || "")
-        .toLowerCase()
-        .includes("repartição de pessoal") ||
-      (user?.cargoChefia || "")
-        .toLowerCase()
-        .includes("chefe de repartição de pessoal"));
+    isHRBossUser(user) ||
+    (isBossGlobally &&
+      ((user?.reparticao || "").toLowerCase().includes("pessoal") ||
+        (user?.reparticao || "").toLowerCase().includes("recursos humanos") ||
+        (user?.departamento || "").toLowerCase().includes("recursos humanos") ||
+        (user?.direcao || "").toLowerCase().includes("recursos humanos") ||
+        (user?.cargoChefia || "").toLowerCase().includes("rh") ||
+        (user?.title || "").toLowerCase().includes("rh") ||
+        (user?.title || "").toLowerCase().includes("repartição de pessoal") ||
+        (user?.reparticao || "")
+          .toLowerCase()
+          .includes("repartição de pessoal") ||
+        (user?.cargoChefia || "")
+          .toLowerCase()
+          .includes("chefe de repartição de pessoal")));
 
   const roles = getRoles(user?.title || user?.cargo || user?.cargoChefia || "");
   const canSeeSalaries = 
@@ -1581,34 +1582,33 @@ export default function GestaoPessoalView({
       fullUpdate.isChefia = true;
     }
 
-    // Auto-assignment details for chefia
-    if (
-      fullUpdate.cargoChefia &&
-      fullUpdate.cargoChefia !== "Nenhum" &&
-      fullUpdate.isChefia !== false &&
-      (fullUpdate.estadoMandato || "").toLowerCase() === "em atividade"
-    ) {
-      const getAreaDeAfetacao = (cc: any): string => {
-        if (
-          cc.reparticao &&
-          cc.reparticao !== "Nenhum" &&
-          cc.reparticao !== "-"
-        )
-          return cc.reparticao;
-        if (
-          cc.departamento &&
-          cc.departamento !== "Nenhum" &&
-          cc.departamento !== "-"
-        )
-          return cc.departamento;
-        if (cc.direcao && cc.direcao !== "Nenhum" && cc.direcao !== "-")
-          return cc.direcao;
-        return cc.unidade || "";
-      };
+    // Obter e definir área de afetação para qualquer colaborador afetado a direção, departamento, repartição ou setor
+    const getAreaDeAfetacao = (cc: any): string => {
+      if (cc.sector && cc.sector !== "Nenhum" && cc.sector !== "-")
+        return cc.sector;
+      if (cc.setor && cc.setor !== "Nenhum" && cc.setor !== "-")
+        return cc.setor;
+      if (
+        cc.reparticao &&
+        cc.reparticao !== "Nenhum" &&
+        cc.reparticao !== "-"
+      )
+        return cc.reparticao;
+      if (
+        cc.departamento &&
+        cc.departamento !== "Nenhum" &&
+        cc.departamento !== "-"
+      )
+        return cc.departamento;
+      if (cc.direcao && cc.direcao !== "Nenhum" && cc.direcao !== "-")
+        return cc.direcao;
+      return cc.unidade || "";
+    };
 
-      const area = getAreaDeAfetacao(fullUpdate);
+    const calculatedArea = getAreaDeAfetacao(fullUpdate);
+    if (calculatedArea) {
       fullUpdate.status = "Afetado";
-      (fullUpdate as any).areaDeAfetacao = area;
+      (fullUpdate as any).areaDeAfetacao = calculatedArea;
     }
 
     // Optimistic Update
@@ -1687,7 +1687,7 @@ export default function GestaoPessoalView({
                   String(fullUpdate.email).toLowerCase().trim()),
           );
 
-          const area = (fullUpdate as any).areaDeAfetacao || "";
+          const area = (fullUpdate as any).areaDeAfetacao || calculatedArea || "";
           const email = (
             fullUpdate.email ||
             `${String(fullUpdate.nome || "")
@@ -1712,11 +1712,12 @@ export default function GestaoPessoalView({
             direcao: fullUpdate.direcao || "",
             departamento: fullUpdate.departamento || "",
             reparticao: fullUpdate.reparticao || "",
-            setor: (fullUpdate as any).setor || "",
+            sector: fullUpdate.sector || (fullUpdate as any).setor || "",
+            setor: fullUpdate.sector || (fullUpdate as any).setor || "",
             setoresAtribuidos: fullUpdate.setoresAtribuidos || [],
             cargo: fullUpdate.cargo || "",
             cargoChefia: fullUpdate.cargoChefia || "",
-            status: fullUpdate.status || "Ativo",
+            status: area ? "Afetado" : (fullUpdate.status || "Ativo"),
             areaDeAfetacao: area,
           };
 
@@ -4932,11 +4933,13 @@ export default function GestaoPessoalView({
                           >
                             <option value=""></option>
                             {editFormData?.reparticao &&
-                              SETORES[editFormData.reparticao]?.map((s) => (
-                                <option key={s + "-" + Math.random()} value={s}>
-                                  {s}
-                                </option>
-                              ))}
+                              (SETORES[editFormData.reparticao] || [])
+                                .filter((s) => s && s.toLowerCase() !== "único" && s.toLowerCase() !== "unico")
+                                .map((s, sIdx) => (
+                                  <option key={`${s}-${sIdx}`} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
                           </select>
                         </td>
                         <td className="p-2 border border-gray-200 text-center">
@@ -6623,11 +6626,13 @@ export default function GestaoPessoalView({
                             SETORES[
                               selectedColaborador.reparticao as keyof typeof SETORES
                             ] || []
-                          )?.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
+                          )
+                            .filter((s) => s && s.toLowerCase() !== "único" && s.toLowerCase() !== "unico")
+                            .map((s, sIdx) => (
+                              <option key={`${s}-${sIdx}`} value={s}>
+                                {s}
+                              </option>
+                            ))}
                           {!SETORES[
                             selectedColaborador.reparticao as keyof typeof SETORES
                           ] && (

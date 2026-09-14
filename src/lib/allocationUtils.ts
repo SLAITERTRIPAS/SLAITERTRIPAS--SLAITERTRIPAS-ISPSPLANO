@@ -453,6 +453,9 @@ export function getUserAllocatedDetails(
 
     // Normalizar setor
     let setorNormalized = setor;
+    if (setorNormalized && (setorNormalized.trim().toLowerCase() === "único" || setorNormalized.trim().toLowerCase() === "unico")) {
+      setorNormalized = "";
+    }
     if (setorNormalized && repNormalized && SETORES[repNormalized]) {
       const secs = SETORES[repNormalized];
       const matchedSecObj = secs.find(

@@ -29,6 +29,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  Clock,
+  BookMarked,
+  BookOpen,
+  FlaskConical,
+  Wrench,
 } from "lucide-react";
 
 import BoardOverview from "../bloco2_orgaos_gestao/BoardOverview";
@@ -63,10 +68,14 @@ const GestaoFormacaoView = lazy(() => import("../bloco4_servicos_centrais/Gestao
 const ArchiveView = lazy(() => import("../bloco5_sistema/ArchiveView"));
 const GestaoAcademicaView = lazy(() => import("../bloco3_unidades_organicas/GestaoAcademicaView"));
 const GestaoAcademicaMainView = lazy(() => import("../bloco3_unidades_organicas/GestaoAcademicaMainView"));
-import { BookOpen } from "lucide-react";
+const HorarioView = lazy(() => import("../bloco3_unidades_organicas/HorarioView"));
+const ExamesView = lazy(() => import("../bloco3_unidades_organicas/ExamesView"));
+const GraduadosView = lazy(() => import("../bloco3_unidades_organicas/GraduadosView"));
+const DisciplinasEspacosFisicosView = lazy(() => import("../bloco3_unidades_organicas/DisciplinasEspacosFisicosView"));
 import {
   getRoles,
   isSuperBossUser,
+  isHRBossUser,
   isPatrimonioBossOrAdmin,
   canAccessArea,
   getAuthorizedActivities,
@@ -205,7 +214,7 @@ export default function DirectorDashboard({
   );
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Gestão de Expediente"]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Gestão de Expediente", "Gestão Académica"]);
 
   const toggleMenu = (menuTitle: string) => {
     setExpandedMenus((prev) =>
@@ -550,7 +559,21 @@ export default function DirectorDashboard({
 
     if (isAuthorizedAcademic) {
       if (!items.some((i) => i.title === "Gestão Académica")) {
-        items.push({ title: "Gestão Académica", icon: Users });
+        items.push({
+          title: "Gestão Académica",
+          icon: GraduationCap,
+          subItems: [
+            { title: "Docentes", icon: Users },
+            { title: "Alocação", icon: ClipboardList },
+            { title: "Horário", icon: Clock },
+            { title: "Calendário de Exame", icon: BookMarked },
+            { title: "Graduados", icon: GraduationCap },
+            { title: "Disciplina", icon: BookOpen },
+            { title: "Blocos e Sala de Aula", icon: Building2 },
+            { title: "Laboratório", icon: FlaskConical },
+            { title: "Oficinas", icon: Wrench },
+          ],
+        });
       }
     }
 
@@ -622,7 +645,7 @@ export default function DirectorDashboard({
       activeItem === "Repartição de Pessoal" ||
       activeItem === "Gestão de Pessoal"
     ) {
-      if (!isAdmin && !canAccessArea(user, user.direcao, user.departamento, "Pessoal")) {
+      if (!isAdmin && !isHRBossUser(user) && !canAccessArea(user, user.direcao, user.departamento, "Pessoal")) {
         onShowAlert("Acesso não autorizado a esta área.");
         setActiveItem("Visão Geral");
       }
@@ -841,8 +864,24 @@ export default function DirectorDashboard({
       activeItem === "Repartição de Pessoal" ||
       activeItem === "Gestão de Pessoal"
     ) {
-      if (!isSuperBossUser(user) && !canAccessArea(user, user.direcao, user.departamento, "Pessoal")) {
-        return null;
+      if (!isSuperBossUser(user) && !isHRBossUser(user) && !canAccessArea(user, user.direcao, user.departamento, "Pessoal")) {
+        return (
+          <div className="w-full max-w-2xl mx-auto border-2 border-red-200 bg-red-50/50 rounded-2xl p-8 text-center text-slate-700 shadow-sm my-8">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto mb-4 font-bold text-xl">
+              !
+            </div>
+            <h3 className="font-bold text-lg text-red-900 mb-2">Acesso Restrito ao Sector</h3>
+            <p className="text-sm text-slate-600 mb-6">
+              Não possui permissões suficientes para aceder à área de Gestão de Pessoal. Contacte a Administração do Sistema.
+            </p>
+            <button
+              onClick={() => setActiveItem("Visão Geral")}
+              className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all shadow-md"
+            >
+              Voltar à Visão Geral
+            </button>
+          </div>
+        );
       }
       return (
         <GestaoPessoalView
@@ -862,7 +901,23 @@ export default function DirectorDashboard({
       activeItem === "Arquivo Morto"
     ) {
       if (!isSuperBossUser(user) && !canAccessArea(user, user.direcao, user.departamento, "Arquivo")) {
-        return null;
+        return (
+          <div className="w-full max-w-2xl mx-auto border-2 border-red-200 bg-red-50/50 rounded-2xl p-8 text-center text-slate-700 shadow-sm my-8">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto mb-4 font-bold text-xl">
+              !
+            </div>
+            <h3 className="font-bold text-lg text-red-900 mb-2">Acesso Restrito ao Sector</h3>
+            <p className="text-sm text-slate-600 mb-6">
+              Não possui permissões suficientes para aceder à Repartição de Arquivo. Contacte a Administração do Sistema.
+            </p>
+            <button
+              onClick={() => setActiveItem("Visão Geral")}
+              className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all shadow-md"
+            >
+              Voltar à Visão Geral
+            </button>
+          </div>
+        );
       }
       return (
         <Suspense fallback={<div className="p-8 text-center text-slate-500">A carregar...</div>}>
@@ -1048,13 +1103,81 @@ export default function DirectorDashboard({
       );
     }
 
-    if (activeItem === "Gestão Académica") {
+    if (activeItem === "Gestão Académica" || activeItem === "Docentes") {
       return (
-        <GestaoAcademicaMainView
+        <GestaoAcademicaView
           title={title}
           user={user}
           onBack={() => setActiveItem("Visão Geral")}
+          initialShowList={true}
+        />
+      );
+    }
+
+    if (activeItem === "Alocação") {
+      return (
+        <GestaoAcademicaView
+          title={title}
+          user={user}
+          onBack={() => setActiveItem("Visão Geral")}
+        />
+      );
+    }
+
+    if (activeItem === "Horário") {
+      return (
+        <HorarioView title={title} user={user} />
+      );
+    }
+
+    if (activeItem === "Calendário de Exame") {
+      return (
+        <ExamesView user={user} onShowAlert={onShowAlert} />
+      );
+    }
+
+    if (activeItem === "Graduados") {
+      return (
+        <GraduadosView />
+      );
+    }
+
+    if (activeItem === "Disciplina") {
+      return (
+        <DisciplinasEspacosFisicosView
+          user={user}
           onShowAlert={onShowAlert}
+          categoria="Disciplinas"
+        />
+      );
+    }
+
+    if (activeItem === "Blocos e Sala de Aula") {
+      return (
+        <DisciplinasEspacosFisicosView
+          user={user}
+          onShowAlert={onShowAlert}
+          categoria="Blocos e Sala de Aula"
+        />
+      );
+    }
+
+    if (activeItem === "Laboratório") {
+      return (
+        <DisciplinasEspacosFisicosView
+          user={user}
+          onShowAlert={onShowAlert}
+          categoria="Laboratórios"
+        />
+      );
+    }
+
+    if (activeItem === "Oficinas") {
+      return (
+        <DisciplinasEspacosFisicosView
+          user={user}
+          onShowAlert={onShowAlert}
+          categoria="Oficinas"
         />
       );
     }

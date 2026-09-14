@@ -279,15 +279,27 @@ export default function SubMenu({
   const isEngenharia =
     titleUpper.includes("DIVISÃO DE ENGENHARIA") ||
     titleUpper.includes("DIVISAO DE ENGENHARIA") ||
+    titleUpper.includes("DIVISÃO ACADÉMICA") ||
+    titleUpper.includes("DIVISAO ACADEMICA") ||
     titleUpper.includes("ENGENHARIA") ||
     titleUpper === "Divisão De Engenharia";
   const isCursos =
+    titleUpper.includes("CURSO") ||
+    titleUpper.includes("LICENCIATURA") ||
+    titleUpper.includes("MESTRADO") ||
+    titleUpper.includes("PÓS-GRADUAÇÃO") ||
+    titleUpper.includes("POS-GRADUAÇÃO") ||
     titleUpper.includes("ELETROTÉCNICA") ||
     titleUpper.includes("ELETROTECNICA") ||
     titleUpper.includes("CONSTRUÇÃO CIVIL") ||
     titleUpper.includes("CONSTRUCAO CIVIL") ||
     titleUpper.includes("MECÂNICA") ||
     titleUpper.includes("MECANICA") ||
+    titleUpper.includes("DEE") ||
+    titleUpper.includes("DECC") ||
+    titleUpper.includes("DECM") ||
+    titleUpper.startsWith("DEPARTAMENTO DE ENGENHARIA") ||
+    titleUpper.startsWith("DEPARTAMENTO DE") ||
     titleUpper === "Departamento De Engenharia Eletrotécnica" ||
     titleUpper === "Departamento De Engenharia De Construção Civil" ||
     titleUpper === "Departamento De Engenharia De Construção Mecânica";

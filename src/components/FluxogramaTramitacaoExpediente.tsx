@@ -310,7 +310,7 @@ export default function FluxogramaTramitacaoExpediente({
               Fluxo de Tramitação de Expediente
             </h2>
             <p className="text-xs text-orange-100 font-medium tracking-wide">
-              Instituto Superior Politécnico de Songo • Sistema Integrado de Gestão (SIGEP)
+              Instituto Superior Politécnico de Songo • Sistema Integrado de Gestão de Processo (SIGEP)
             </p>
           </div>
         </div>

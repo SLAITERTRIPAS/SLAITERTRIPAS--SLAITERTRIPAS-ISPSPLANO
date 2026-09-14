@@ -7,12 +7,14 @@ export default function MainContent({
   onVisitante,
   onSigpro,
   onMonografia,
+  onProjetoCientifico,
   user,
 }: {
   onStart: () => void;
   onVisitante: () => void;
   onSigpro: () => void;
   onMonografia: () => void;
+  onProjetoCientifico: () => void;
   user?: any;
 }) {
   const [showOptions, setShowOptions] = useState(false);
@@ -29,7 +31,7 @@ export default function MainContent({
             Sistema Integrado de Gestão
           </span>
           <span className="block text-3xl md:text-[50px] leading-tight mb-2">
-            de Planificação Songo
+            de Processo Songo
           </span>
           <span className="block text-6xl md:text-[80px] mt-2 font-bookman">
             2026
@@ -114,6 +116,16 @@ export default function MainContent({
                 }}
               >
                 <span>Sigpro</span>
+              </button>
+
+              <button
+                onClick={onProjetoCientifico}
+                className="w-full bg-blue-900 text-white px-10 py-3 font-black hover:bg-blue-800 transition-all tracking-widest text-[12px] flex items-center justify-center gap-2 rounded-xl active:translate-y-1"
+                style={{
+                  boxShadow: "0 4px 0 #1e3a8a, 0 10px 15px rgba(0, 0, 0, 0.5)",
+                }}
+              >
+                <span>Projeto Científico</span>
               </button>
             </motion.div>
           )}

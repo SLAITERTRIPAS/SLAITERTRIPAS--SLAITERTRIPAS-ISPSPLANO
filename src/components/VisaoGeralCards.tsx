@@ -1,5 +1,6 @@
 import React from "react";
-import { Users, FileText, BarChart3, DollarSign, GraduationCap, FolderOpen, FileCheck, Box, Folder } from "lucide-react";
+import { Users, FileText, BarChart3, DollarSign, GraduationCap, FolderOpen, FileCheck, Box, Folder, Cpu } from "lucide-react";
+import { isSuperBossUser } from "../lib/auth";
 
 interface CardItem {
   title: string;
@@ -181,7 +182,21 @@ export default function VisaoGeralCards({
   const cards = rawCards.map(getCardDetails);
 
   return (
-    <div className="flex flex-col items-start w-full mx-auto space-y-6 animate-fadeIn">
+    <div className="flex flex-col items-start w-full mx-auto space-y-4 animate-fadeIn">
+      {/* Quantum AI Indicator Bar - Apenas Administrador Geral */}
+      {isSuperBossUser(user) && (
+        <div className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900 text-cyan-300 border border-cyan-500/20 text-[11px] font-bold">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span>Módulos Estratégicos Monitorizados por IA Quântica</span>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] font-mono">
+            <span className="text-emerald-400">Coerência: 99.8%</span>
+            <span className="text-slate-400 hidden sm:inline">• Sincronismo Atômico Firestore</span>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 w-full">
         {cards.map((card) => {
           const IconComp = card.icon;

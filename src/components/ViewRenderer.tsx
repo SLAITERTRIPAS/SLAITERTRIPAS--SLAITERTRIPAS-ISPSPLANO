@@ -9,13 +9,14 @@ import MainHeader from "../blocos/bloco1_apresentacao/MainHeader";
 import { MatrixActivity, Event, Nota, ServiceRequest, BookRegistration } from "../types";
 import { firestoreService } from "../lib/firestoreService";
 import { ErrorBoundary } from "./ErrorBoundary";
+import ScientificProjectPresentation from "./ScientificProjectPresentation";
 import EventBlock from "../blocos/bloco8_gerais/EventBlock";
 import { RefreshCw, X, Loader2 } from "lucide-react";
 import { isSuperBossUser, getUserWorkspace } from "../lib/auth";
 import { lazyRetry } from "../lib/utils";
+import SistemaView from "../blocos/bloco5_sistema/SistemaView";
 
 // Lazy loading heavy views with automatic retry
-const SistemaView = lazy(() => lazyRetry(() => import("../blocos/bloco5_sistema/SistemaView")));
 const DirectorDashboard = lazy(() => lazyRetry(() => import("../blocos/bloco2_orgaos_gestao/DirectorDashboard")));
 const ReposicaoTesteView = lazy(() => lazyRetry(() => import("../blocos/bloco3_unidades_organicas/ReposicaoTesteView")));
 const WorkflowRequisicaoView = lazy(() => lazyRetry(() => import("../blocos/bloco5_sistema/WorkflowRequisicaoView")));
@@ -50,6 +51,7 @@ const PlanoWorkflowView = lazy(() => lazyRetry(() => import("../blocos/bloco5_si
 const CalendarView = lazy(() => lazyRetry(() => import("../blocos/bloco5_sistema/CalendarView")));
 const GestaoExpedienteHistoricoView = lazy(() => lazyRetry(() => import("../blocos/bloco4_servicos_centrais/GestaoExpedienteHistoricoView")));
 const LibraryManagementView = lazy(() => lazyRetry(() => import("../blocos/bloco3_unidades_organicas/LibraryManagementView")));
+const ManualInstrucoesView = lazy(() => lazyRetry(() => import("../blocos/bloco8_gerais/ManualInstrucoesView")));
 const SectorSelectionView = lazy(() => lazyRetry(() => import("../blocos/bloco1_apresentacao/SectorSelectionView").then(m => ({ default: m.SectorSelectionView }))));
 
 const ViewLoading = () => (
@@ -277,6 +279,7 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
               onVisitante={() => onSetView("visitor_welcome")}
               onSigpro={() => window.open("https://sigpro.ispsongo.ac.mz", "_blank", "noopener,noreferrer")}
               onMonografia={() => onSetView("monografia")}
+              onProjetoCientifico={() => onSetView("projeto_cientifico")}
               user={user && user.role !== "Utilizador" ? extendedUser : null}
             />
 
@@ -454,6 +457,7 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
             user={extendedUser || user}
             colaboradores={colaboradores}
             onShowAlert={onShowAlert}
+            initialActiveItem={dashboardActiveItem}
           />
         );
       }
@@ -673,17 +677,8 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
 
     case "documentos_normativos":
       return (
-        <div className="flex flex-col h-full bg-slate-950">
-          <MainHeader
-            user={extendedUser}
-            onBack={goBack}
-            showBack={true}
-            title="Documentos Normativos"
-            onLogout={onLogout}
-          />
-          <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-900 text-slate-100">
-            <DocumentosView title="Documentos Normativos" user={extendedUser} />
-          </div>
+        <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50 text-slate-900">
+          <DocumentosView title="Documentos Normativos" user={extendedUser} />
         </div>
       );
 
@@ -755,6 +750,9 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
                       isOwner: false,
                       nuit: finalData.nuit || "",
                       bi: finalData.numeroBI || "",
+                      instituicaoId: finalData.instituicaoId || "",
+                      instituicaoNome: finalData.instituicaoNome || "",
+                      instituicaoLogo: finalData.instituicaoLogo || "",
                       password: "123456",
                       mustChangePassword: true,
                       createdAt: new Date().toISOString(),
@@ -847,27 +845,18 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
 
     case "calendar":
       return (
-        <div className="flex flex-col h-full bg-slate-950">
-          <MainHeader
-            user={extendedUser}
-            onBack={goBack}
-            showBack={true}
+        <div className="flex-1 overflow-auto p-2 sm:p-4 md:p-6 bg-slate-50">
+          <CalendarView
+            events={events}
+            onAddEvent={(evt) => firestoreService.events.add(evt)}
+            onUpdateEvent={onUpdateEvent}
+            onDeleteEvent={onDeleteEvent}
+            onAgendar={() => onSetView("agendar")}
+            onNota={() => onSetView("nota_form")}
             title={dashboardTitle || "Calendário de Actividades"}
-            onLogout={onLogout}
+            notes={notes}
+            user={extendedUser}
           />
-          <div className="flex-1 overflow-auto p-2 sm:p-4 md:p-6 bg-slate-900">
-            <CalendarView
-              events={events}
-              onAddEvent={(evt) => firestoreService.events.add(evt)}
-              onUpdateEvent={onUpdateEvent}
-              onDeleteEvent={onDeleteEvent}
-              onAgendar={() => onSetView("agendar")}
-              onNota={() => onSetView("nota_form")}
-              title={dashboardTitle || "Calendário de Actividades"}
-              notes={notes}
-              user={extendedUser}
-            />
-          </div>
         </div>
       );
 
@@ -922,6 +911,12 @@ const ViewRendererInner: React.FC<ViewRendererProps> = ({
           bookRegistrations={bookRegistrations}
         />
       );
+
+    case "manual_instrucoes":
+      return <ManualInstrucoesView onBack={goBack} />;
+
+    case "projeto_cientifico":
+      return <ScientificProjectPresentation onBack={goBack} />;
 
 
 

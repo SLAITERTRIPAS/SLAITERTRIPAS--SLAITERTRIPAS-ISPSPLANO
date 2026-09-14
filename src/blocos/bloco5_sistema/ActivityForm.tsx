@@ -2136,6 +2136,13 @@ export default function ActivityForm({
 
       // Normalizar setor
       let setorNormalized = setor;
+      if (
+        setorNormalized &&
+        (setorNormalized.trim().toLowerCase() === "único" ||
+          setorNormalized.trim().toLowerCase() === "unico")
+      ) {
+        setorNormalized = "";
+      }
       if (setorNormalized && repNormalized && SETORES[repNormalized]) {
         const secs = SETORES[repNormalized];
         const matchedSecObj = secs.find(
@@ -3974,9 +3981,14 @@ export default function ActivityForm({
                         const correctKey = Object.keys(SETORES).find(
                           (k) => k.toLowerCase() === rep.toLowerCase(),
                         );
-                        const finalSectors = correctKey
-                          ? SETORES[correctKey]
-                          : [];
+                        const finalSectors = (
+                          correctKey ? SETORES[correctKey] || [] : []
+                        ).filter(
+                          (s) =>
+                            s &&
+                            s.toLowerCase() !== "único" &&
+                            s.toLowerCase() !== "unico",
+                        );
                         if (finalSectors.length === 0) {
                           return (
                             <option disabled>Sem setores cadastrados</option>

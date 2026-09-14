@@ -297,7 +297,7 @@ export default function GestaoAcademicaView({
     const handleDeleteEfetivo = async (id: string) => {
       if (
         window.confirm(
-          "Tem certeza de que deseja eliminar este registo académico?",
+          "Tem a certeza que pretende excluir?",
         )
       ) {
         try {
@@ -1020,36 +1020,7 @@ export default function GestaoAcademicaView({
                                     exit={{ opacity: 0, y: 10 }}
                                     className="absolute top-full left-0 mt-2 w-48 bg-slate-950 text-white rounded-xl shadow-2xl z-[80] overflow-hidden border border-slate-800"
                                   >
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!isHeadOfPersonnel) {
-                                          setAlertMessage(
-                                            "Apenas o Chefe da Repartição de Pessoal pode gerir disciplinas.",
-                                          );
-                                          return;
-                                        }
-                                        setShowDisciplinasModal(true);
-                                      }}
-                                      className={`w-full px-4 py-3 text-left text-[10px] font-black tracking-widest flex items-center gap-2 transition-colors border-b border-slate-900 ${!isHeadOfPersonnel ? "text-slate-600 cursor-not-allowed" : "hover:bg-slate-900"}`}
-                                    >
-                                      <BookOpen
-                                        size={14}
-                                        className={
-                                          !isHeadOfPersonnel
-                                            ? "text-slate-700"
-                                            : "text-blue-400"
-                                        }
-                                      />{" "}
-                                      Alocar Disciplina
-                                    </button>
-                                    <button className="w-full px-4 py-3 text-left text-[10px] font-black tracking-widest hover:bg-slate-900 flex items-center gap-2 transition-colors">
-                                      <Users
-                                        size={14}
-                                        className="text-amber-400"
-                                      />{" "}
-                                      Ver Perfil
-                                    </button>
+                                    
                                   </motion.div>
                                 )}
                               </AnimatePresence>

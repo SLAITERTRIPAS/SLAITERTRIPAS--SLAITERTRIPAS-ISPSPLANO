@@ -895,7 +895,7 @@ export default function BolsasEstudosView({
                   <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 gap-1">
                     {(["Ativo", "Suspenso", "Concluído"] as const).map((s) => (
                       <button
-                        key={s + "-" + Math.random()}
+                        key={s}
                         type="button"
                         onClick={() => setStatus(s)}
                         className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition-all ${
