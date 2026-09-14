@@ -42,21 +42,21 @@ import {
 } from "lucide-react";
 
 import BoardOverview from "../bloco2_orgaos_gestao/BoardOverview";
-const CalendarView = lazy(() => import("../bloco5_sistema/CalendarView"));
+import CalendarView from "../bloco5_sistema/CalendarView";
 import AssignActivityView from "../bloco5_sistema/AssignActivityView";
-const MatrixView = lazy(() => import("../bloco5_sistema/MatrixView"));
+import MatrixView from "../bloco5_sistema/MatrixView";
 import { MatrixActivity } from "../../types";
-const MyMatrixView = lazy(() => import("../bloco5_sistema/MyMatrixView"));
-const ReportsView = lazy(() => import("../bloco7_relatorios/ReportsView"));
+import MyMatrixView from "../bloco5_sistema/MyMatrixView";
+import ReportsView from "../bloco7_relatorios/ReportsView";
 import ActivityForm from "../bloco5_sistema/ActivityForm";
 import IndividualPlanForm from "../bloco8_gerais/IndividualPlanForm";
-const GestaoDocumentosView = lazy(() => import("../bloco4_servicos_centrais/GestaoDocumentosView"));
-const GestaoExpedienteHistoricoView = lazy(() => import("../bloco4_servicos_centrais/GestaoExpedienteHistoricoView"));
-const EstatisticaView = lazy(() => import("../bloco7_relatorios/EstatisticaView"));
-const DocumentosView = lazy(() => import("../bloco6_documentos/DocumentosView"));
-const LibraryManagementView = lazy(() => import("../bloco3_unidades_organicas/LibraryManagementView"));
-const GestaoPessoalView = lazy(() => import("../bloco4_servicos_centrais/GestaoPessoalView"));
-const GestaoSocialView = lazy(() => import("../bloco4_servicos_centrais/GestaoSocialView"));
+import GestaoDocumentosView from "../bloco4_servicos_centrais/GestaoDocumentosView";
+import GestaoExpedienteHistoricoView from "../bloco4_servicos_centrais/GestaoExpedienteHistoricoView";
+import EstatisticaView from "../bloco7_relatorios/EstatisticaView";
+import DocumentosView from "../bloco6_documentos/DocumentosView";
+import LibraryManagementView from "../bloco3_unidades_organicas/LibraryManagementView";
+import GestaoPessoalView from "../bloco4_servicos_centrais/GestaoPessoalView";
+import GestaoSocialView from "../bloco4_servicos_centrais/GestaoSocialView";
 import {
   Event,
   Expediente,
@@ -67,16 +67,16 @@ import {
   Supplier,
 } from "../../types";
 import RecursosFinanceirosForm from "../bloco8_gerais/RecursosFinanceirosForm";
-const DRADashboard = lazy(() => import("../bloco4_servicos_centrais/DRADashboard"));
+import DRADashboard from "../bloco4_servicos_centrais/DRADashboard";
 import CentralOverview from "./CentralOverview";
-const GestaoFormacaoView = lazy(() => import("../bloco4_servicos_centrais/GestaoFormacaoView"));
-const ArchiveView = lazy(() => import("../bloco5_sistema/ArchiveView"));
-const GestaoAcademicaView = lazy(() => import("../bloco3_unidades_organicas/GestaoAcademicaView"));
-const GestaoAcademicaMainView = lazy(() => import("../bloco3_unidades_organicas/GestaoAcademicaMainView"));
-const HorarioView = lazy(() => import("../bloco3_unidades_organicas/HorarioView"));
-const ExamesView = lazy(() => import("../bloco3_unidades_organicas/ExamesView"));
-const GraduadosView = lazy(() => import("../bloco3_unidades_organicas/GraduadosView"));
-const DisciplinasEspacosFisicosView = lazy(() => import("../bloco3_unidades_organicas/DisciplinasEspacosFisicosView"));
+import GestaoFormacaoView from "../bloco4_servicos_centrais/GestaoFormacaoView";
+import ArchiveView from "../bloco5_sistema/ArchiveView";
+import GestaoAcademicaView from "../bloco3_unidades_organicas/GestaoAcademicaView";
+import GestaoAcademicaMainView from "../bloco3_unidades_organicas/GestaoAcademicaMainView";
+import HorarioView from "../bloco3_unidades_organicas/HorarioView";
+import ExamesView from "../bloco3_unidades_organicas/ExamesView";
+import GraduadosView from "../bloco3_unidades_organicas/GraduadosView";
+import DisciplinasEspacosFisicosView from "../bloco3_unidades_organicas/DisciplinasEspacosFisicosView";
 import {
   getRoles,
   isSuperBossUser,
@@ -86,19 +86,19 @@ import {
   getAuthorizedActivities,
 } from "../../lib/auth";
 import { confirmWorkspaceExit } from "../../lib/utils";
-const UGEA_PlanView = lazy(() => import("../bloco4_servicos_centrais/UGEA_PlanView"));
-const UGEA_SupplierManagementView = lazy(() => import("../bloco4_servicos_centrais/UGEA_SupplierManagementView"));
-const UGEA_SupplierRegistrationForm = lazy(() => import("../bloco4_servicos_centrais/UGEA_SupplierRegistrationForm"));
-const GestaoProdutosPrecosView = lazy(() => import("../bloco9_produtos_precos/GestaoProdutosPrecosView"));
-const AssinaturaDigitalView = lazy(() => import("../bloco5_sistema/AssinaturaDigitalView"));
+import UGEA_PlanView from "../bloco4_servicos_centrais/UGEA_PlanView";
+import UGEA_SupplierManagementView from "../bloco4_servicos_centrais/UGEA_SupplierManagementView";
+import UGEA_SupplierRegistrationForm from "../bloco4_servicos_centrais/UGEA_SupplierRegistrationForm";
+import GestaoProdutosPrecosView from "../bloco9_produtos_precos/GestaoProdutosPrecosView";
+import AssinaturaDigitalView from "../bloco5_sistema/AssinaturaDigitalView";
 import CaixaMensagensView from "../bloco5_sistema/CaixaMensagensView";
-const BalancoMensalView = lazy(() => import("../bloco4_servicos_centrais/BalancoMensalView"));
-const BalancoCombustivelView = lazy(() => import("../bloco4_servicos_centrais/BalancoCombustivelView"));
-const BalancoInventarioView = lazy(() => import("../bloco4_servicos_centrais/BalancoInventarioView"));
-const BalancoAtividadesView = lazy(() => import("../bloco4_servicos_centrais/BalancoAtividadesView"));
-const GestaoTransporteView = lazy(() => import("../bloco4_servicos_centrais/GestaoTransporteView"));
-const PlanoWorkflowView = lazy(() => import("../bloco5_sistema/PlanoWorkflowView"));
-const AcaoOrcamentalView = lazy(() => import("../../components/AcaoOrcamentalView"));
+import BalancoMensalView from "../bloco4_servicos_centrais/BalancoMensalView";
+import BalancoCombustivelView from "../bloco4_servicos_centrais/BalancoCombustivelView";
+import BalancoInventarioView from "../bloco4_servicos_centrais/BalancoInventarioView";
+import BalancoAtividadesView from "../bloco4_servicos_centrais/BalancoAtividadesView";
+import GestaoTransporteView from "../bloco4_servicos_centrais/GestaoTransporteView";
+import PlanoWorkflowView from "../bloco5_sistema/PlanoWorkflowView";
+import AcaoOrcamentalView from "../../components/AcaoOrcamentalView";
 import { firestoreService } from "../../lib/firestoreService";
 import MainHeader from "../bloco1_apresentacao/MainHeader";
 import VisaoGeralCards from "../../components/VisaoGeralCards";
@@ -112,9 +112,9 @@ import {
   findDirecaoPorDepartamento,
   notifyEstruturaUpdated,
 } from "../../lib/instituicaoEstruturaService";
-const RHStatView = lazy(() => import("../bloco7_relatorios/RHStatisticsWorkflowView"));
-const BolsasEstudosView = lazy(() => import("../bloco4_servicos_centrais/BolsasEstudosView"));
-const GestaoEstudantilView = lazy(() => import("../bloco3_unidades_organicas/GestaoEstudantilView"));
+import RHStatView from "../bloco7_relatorios/RHStatisticsWorkflowView";
+import BolsasEstudosView from "../bloco4_servicos_centrais/BolsasEstudosView";
+import GestaoEstudantilView from "../bloco3_unidades_organicas/GestaoEstudantilView";
 
 export default function DirectorDashboard({
   title = "Painel de Gestão",

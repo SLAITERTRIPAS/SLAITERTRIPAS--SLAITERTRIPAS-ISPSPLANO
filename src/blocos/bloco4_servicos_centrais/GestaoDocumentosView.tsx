@@ -25,7 +25,7 @@ import LoadingSpinner from "../bloco1_apresentacao/LoadingSpinner";
 import { InstitutionalHeader } from "../../components/InstitutionalHeader";
 import FormularioExpediente from "../bloco6_documentos/FormularioExpediente";
 import GerarDespachoSection from "../bloco5_sistema/GerarDespachoSection";
-const GestaoExpedienteHistoricoView = lazy(() => import("./GestaoExpedienteHistoricoView"));
+import GestaoExpedienteHistoricoView from "./GestaoExpedienteHistoricoView";
 import { firestoreService } from "../../lib/firestoreService";
 
 export default function GestaoDocumentosView({

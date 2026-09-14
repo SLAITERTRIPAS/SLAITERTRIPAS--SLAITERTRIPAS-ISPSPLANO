@@ -177,7 +177,7 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
   }
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/90 shadow-xs space-y-10 pb-16 text-slate-900">
       {/* Cabeçalho Institucional Oficial (Idêntico ao Plano de Actividade) */}
       <InstitutionalHeader
         unidadeName={user?.unidadeOrganica || user?.unidade}
@@ -193,26 +193,26 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
       <section className="space-y-6">
         <SectionHeader
           title="Modelos e Formulários Oficiais"
-          description="Selecione o documento normativo desejado na lista abaixo"
+          description="Selecione o documento normativo desejado na lista abaixo para preenchimento e emissão"
           icon={FileSignature}
           iconBgColor="bg-amber-100"
-          iconColor="text-amber-700"
+          iconColor="text-amber-800"
         />
 
-        <div className="w-full max-w-xl">
-          <label className="block text-sm font-bold text-slate-700 mb-2">
-            Selecione o Documento
+        <div className="w-full max-w-xl bg-white p-2 rounded-2xl">
+          <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
+            Selecione o Documento Normativo
           </label>
           <select
-            className="w-full p-4 rounded-xl border border-slate-300 bg-slate-50/50 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-700"
+            className="w-full p-4 rounded-xl border border-slate-300 bg-white shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all font-bold text-slate-900 cursor-pointer"
             onChange={handleSelectDoc}
             defaultValue=""
           >
-            <option value="" disabled>
+            <option value="" disabled className="text-slate-400">
               Selecione um documento...
             </option>
 
-            <optgroup label="Geral">
+            <optgroup label="Geral" className="font-bold text-slate-900">
               <option value="Minuta de pedido de férias">
                 Minuta de pedido de férias
               </option>
@@ -234,7 +234,7 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
             </optgroup>
 
             {isRHBoss && (
-              <optgroup label="Para Chefe de Recursos Humanos">
+              <optgroup label="Para Chefe de Recursos Humanos" className="font-bold text-slate-900">
                 <option value="Guia de Marcha">Guia de Marcha</option>
                 <option value="Guia de Apresentação">
                   Guia de Apresentação
@@ -252,7 +252,7 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
             )}
 
             {isPatrimonio && (
-              <optgroup label="Exclusivo Repartição de Património">
+              <optgroup label="Exclusivo Repartição de Património" className="font-bold text-slate-900">
                 <option value="Ficha de Cadastro de Inventário">
                   Ficha de Cadastro de Inventário
                 </option>
@@ -265,68 +265,68 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           <div
             onClick={() => setActiveDigitalForm("m7_justificacao")}
-            className="p-4 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 cursor-pointer transition-all shadow-sm group"
+            className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-blue-600 hover:shadow-md cursor-pointer transition-all group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-blue-600 text-white font-bold group-hover:scale-105 transition-transform">
+              <div className="p-3 rounded-xl bg-blue-600 text-white font-bold group-hover:scale-105 transition-transform shadow-xs">
                 📋
               </div>
               <div>
-                <h4 className="font-bold text-xs text-blue-950 uppercase tracking-tight">
+                <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight">
                   Justificação de Faltas
                 </h4>
-                <p className="text-[11px] text-blue-700">Registo de Efectividade</p>
+                <p className="text-xs font-semibold text-blue-800">Registo de Efectividade</p>
               </div>
             </div>
           </div>
 
           <div
             onClick={() => setActiveDigitalForm("m7_dispensa")}
-            className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/80 cursor-pointer transition-all shadow-sm group"
+            className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-600 hover:shadow-md cursor-pointer transition-all group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-emerald-600 text-white font-bold group-hover:scale-105 transition-transform">
+              <div className="p-3 rounded-xl bg-emerald-600 text-white font-bold group-hover:scale-105 transition-transform shadow-xs">
                 📅
               </div>
               <div>
-                <h4 className="font-bold text-xs text-emerald-950 uppercase tracking-tight">
+                <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight">
                   Pedido de Dispensa
                 </h4>
-                <p className="text-[11px] text-emerald-700">Art. 101 do EGFAE</p>
+                <p className="text-xs font-semibold text-emerald-800">Art. 101 do EGFAE</p>
               </div>
             </div>
           </div>
 
           <div
             onClick={() => setActiveDigitalForm("m6")}
-            className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/80 cursor-pointer transition-all shadow-sm group"
+            className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-amber-600 hover:shadow-md cursor-pointer transition-all group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-amber-600 text-white font-bold group-hover:scale-105 transition-transform">
+              <div className="p-3 rounded-xl bg-amber-500 text-white font-bold group-hover:scale-105 transition-transform shadow-xs">
                 📝
               </div>
               <div>
-                <h4 className="font-bold text-xs text-amber-950 uppercase tracking-tight">
+                <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight">
                   Informação Proposta
                 </h4>
-                <p className="text-[11px] text-amber-700">Deslocações & Actividades</p>
+                <p className="text-xs font-semibold text-amber-800">Deslocações & Actividades</p>
               </div>
             </div>
           </div>
 
           <div
             onClick={() => setActiveDigitalForm("m1")}
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all shadow-sm group"
+            className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-600 hover:shadow-md cursor-pointer transition-all group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-slate-800 text-white font-bold group-hover:scale-105 transition-transform">
+              <div className="p-3 rounded-xl bg-slate-900 text-white font-bold group-hover:scale-105 transition-transform shadow-xs">
                 📦
               </div>
               <div>
-                <h4 className="font-bold text-xs text-slate-900 uppercase tracking-tight">
+                <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight">
                   Requisição Interna
                 </h4>
-                <p className="text-[11px] text-slate-600">Material & Economato</p>
+                <p className="text-xs font-semibold text-slate-700">Material & Economato</p>
               </div>
             </div>
           </div>
@@ -334,22 +334,22 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
       </section>
 
       {/* Secção de Documentos Normativos Carregados */}
-      <section className="space-y-6">
+      <section className="space-y-6 pt-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
-              <FileText size={20} />
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-2.5 rounded-xl">
+              <FileText size={22} />
             </div>
             <div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 Regulamentos e Normativas
               </h3>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm font-medium text-slate-700">
                 Repositório de documentos legais e orientações técnicas
               </p>
             </div>
           </div>
-          <label className="w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all cursor-pointer shadow-xl shadow-slate-100">
+          <label className="w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all cursor-pointer shadow-md">
             <Upload size={16} className="text-amber-400" />
             Upload Normativo
             <input
@@ -363,23 +363,26 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {documentos.length === 0 ? (
-            <div className="col-span-full py-20 text-center space-y-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
-              <div className="w-16 h-16 bg-slate-50/50 rounded-full flex items-center justify-center mx-auto shadow-sm">
-                <Folder className="text-slate-300" size={32} />
+            <div className="col-span-full py-16 text-center space-y-4 bg-white border-2 border-dashed border-slate-300 rounded-3xl p-8">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto shadow-xs border border-slate-200">
+                <Folder className="text-slate-500" size={32} />
               </div>
-              <p className="text-slate-400 font-bold">
+              <p className="text-slate-800 font-bold text-base">
                 Nenhum documento normativo carregado nesta unidade.
+              </p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Utilize o botão "Upload Normativo" para carregar regulamentos ou diretrizes internas em formato PDF.
               </p>
             </div>
           ) : (
             documentos.map((doc) => (
               <div
                 key={doc.id}
-                className={`p-6 rounded-2xl shadow-sm border ${doc.isRascunho ? "bg-gray-100 border-gray-200" : "bg-slate-50/50 border-blue-100"}`}
+                className={`p-6 rounded-2xl shadow-sm border ${doc.isRascunho ? "bg-slate-50 border-slate-300" : "bg-white border-slate-200 hover:border-blue-400"}`}
               >
                 <div className="flex items-center gap-4 mb-4">
                   <div
-                    className={`p-3 rounded-xl ${doc.isRascunho ? "bg-gray-200 text-gray-600" : "bg-blue-50 text-blue-600"}`}
+                    className={`p-3 rounded-xl ${doc.isRascunho ? "bg-slate-200 text-slate-700" : "bg-blue-50 text-blue-700"}`}
                   >
                     {doc.isRascunho ? (
                       <Folder size={24} />
@@ -388,8 +391,8 @@ export default function DocumentosView({ title = "Documentos Normativos", user }
                     )}
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900">{doc.nome}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-bold text-slate-900">{doc.nome}</p>
+                    <p className="text-xs text-slate-600 font-medium">
                       {doc.tipo} • {doc.formato}
                     </p>
                   </div>

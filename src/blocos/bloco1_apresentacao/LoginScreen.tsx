@@ -14,7 +14,9 @@ import {
   Tag,
   Info,
   Printer,
+  BookOpen,
 } from "lucide-react";
+import SobreSistemaView from "../bloco5_sistema/SobreSistemaView";
 import { ProcessingCircle } from "../../components/ui/ProcessingCircle";
 import {
   withTimeout,
@@ -196,6 +198,7 @@ export default function LoginScreen({
   events: any[];
 }) {
   const [view, setView] = useState<"login" | "create_password">("login");
+  const [showSobreSistemaModal, setShowSobreSistemaModal] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -1442,7 +1445,16 @@ export default function LoginScreen({
         </div>
 
         {/* Top Right Icons */}
-        <div className="absolute top-6 right-6 flex gap-3 z-20">
+        <div className="absolute top-6 right-6 flex items-center gap-2 z-20">
+          <button
+            type="button"
+            onClick={() => setShowSobreSistemaModal(true)}
+            title="Sobre o Sistema (Manual do Sistema)"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full transition-all text-white text-xs font-bold cursor-pointer shadow-md hover:scale-105 active:scale-95"
+          >
+            <BookOpen size={16} />
+            <span>Sobre o Sistema</span>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -1570,7 +1582,16 @@ export default function LoginScreen({
           </form>
 
 
-              <div className="mt-8 pt-4 border-t border-gray-100 flex justify-center">
+              <div className="mt-8 pt-4 border-t border-gray-100 flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSobreSistemaModal(true)}
+                  className="w-full py-3 px-4 bg-blue-50 hover:bg-blue-100 text-[#0a0a5a] rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer border border-blue-200/80 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <BookOpen size={16} className="text-blue-700 shrink-0" />
+                  <span>📖 Sobre o Sistema (Manual do Sistema)</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={async () => {
@@ -1996,6 +2017,35 @@ export default function LoginScreen({
                 Fechar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sobre o Sistema / Manual do Sistema */}
+      {showSobreSistemaModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[300] flex items-center justify-center p-3 sm:p-6 md:p-10 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-5xl w-full max-h-[92vh] overflow-y-auto p-6 md:p-10 relative shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-20 pb-4 mb-6 border-b border-gray-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#0a0a5a] text-white flex items-center justify-center font-bold shadow-md">
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-[#0a0a5a] tracking-tight">Sobre o Sistema / Manual do Sistema</h2>
+                  <p className="text-xs text-gray-500 font-medium">Documentação, Objetivos e Guia de Utilização do SIGEP</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSobreSistemaModal(false)}
+                className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full font-bold transition-all cursor-pointer flex items-center gap-1.5 text-xs px-3 shadow-sm hover:scale-105"
+              >
+                <X size={18} />
+                <span>Fechar</span>
+              </button>
+            </div>
+
+            <SobreSistemaView />
           </div>
         </div>
       )}

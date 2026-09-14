@@ -304,8 +304,14 @@ export default function MainHeader({
       >
         <div className="w-full flex justify-between items-center px-2 sm:px-4 md:px-6 pt-1 pb-1 gap-2 md:gap-4">
           {/* Left - Logos */}
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <div className="flex border-2 border-white p-0.5 rounded-xl items-center justify-center bg-white overflow-hidden w-8 h-8 md:w-11 md:h-11 shrink-0 shadow-lg">
+          <div 
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("open_view", { detail: { view: "dashboard" } }));
+            }}
+            title="Ir para a Visão Geral (Um clique abre de imediato)"
+            className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer hover:opacity-90 active:scale-95 transition-all group"
+          >
+            <div className="flex border-2 border-white p-0.5 rounded-xl items-center justify-center bg-white overflow-hidden w-8 h-8 md:w-11 md:h-11 shrink-0 shadow-lg group-hover:shadow-amber-400/30 transition-shadow">
               <img
                 src={instLogo}
                 alt={`Logotipo ${instName}`}
