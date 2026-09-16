@@ -73,7 +73,9 @@ if (typeof window !== "undefined") {
 }
 
 const container = document.getElementById("root");
+console.log("SIGEP: Tentando montar aplicação...");
 if (container) {
+  console.log("SIGEP: Container encontrado, renderizando...");
   createRoot(container).render(
     <StrictMode>
       <ErrorBoundary>
@@ -81,6 +83,7 @@ if (container) {
       </ErrorBoundary>
     </StrictMode>,
   );
+  console.log("SIGEP: Renderização iniciada.");
 } else {
   console.error("Critical: DOM container #root not found.");
 }

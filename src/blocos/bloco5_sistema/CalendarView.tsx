@@ -341,7 +341,7 @@ export default function CalendarView({
                             : "bg-white border-slate-200 hover:border-slate-400 hover:shadow-md"
                         }`}
                       >
-                        <div className="flex justify-between items-center w-full">
+                        <div className="flex justify-center items-center w-full relative">
                           <span
                             className={`text-xs sm:text-sm md:text-base font-bold ${
                               isJune30 ? "text-red-600 font-black" : "text-slate-800"
@@ -350,7 +350,7 @@ export default function CalendarView({
                             {day}
                           </span>
                           {dayEvents.length > 0 && (
-                            <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-blue-600 shrink-0" title={`${dayEvents.length} evento(s)`} />
+                            <span className="absolute top-0 right-0 w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-blue-600 shrink-0" title={`${dayEvents.length} evento(s)`} />
                           )}
                         </div>
 
