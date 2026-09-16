@@ -18,14 +18,16 @@ export default function EventBlock({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Get only upcoming events or today's events
-  const displayEvents = sortedEvents
-    .filter((e) => {
-      const eventDate = new Date(e.date);
-      eventDate.setHours(0, 0, 0, 0);
-      return eventDate >= today;
-    })
-    .slice(0, 3);
+  const fiveDaysFromNow = new Date();
+  fiveDaysFromNow.setDate(today.getDate() + 5);
+  fiveDaysFromNow.setHours(23, 59, 59, 999);
+
+  // Get only upcoming events or today's events within 5 days
+  const displayEvents = sortedEvents.filter((e) => {
+    const eventDate = new Date(e.date);
+    eventDate.setHours(0, 0, 0, 0);
+    return eventDate >= today && eventDate <= fiveDaysFromNow;
+  });
 
   const isNew = (dateStr: string) => {
     const eventDate = new Date(dateStr);

@@ -72,11 +72,16 @@ if (typeof window !== "undefined") {
   };
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>,
-);
+const container = document.getElementById("root");
+if (container) {
+  createRoot(container).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>,
+  );
+} else {
+  console.error("Critical: DOM container #root not found.");
+}
 
