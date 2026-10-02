@@ -34,9 +34,7 @@ try {
     try {
       dbInstance = initializeFirestore(
         app,
-        {
-          experimentalForceLongPolling: true,
-        },
+        {},
         dbIdToUse === "(default)" ? undefined : dbIdToUse,
       );
     } catch (_) {
